@@ -6,7 +6,7 @@ const path = require('path');
 const { exec } = require('child_process');
 const url = require('url');
 
-const PORT = 3011;
+const PORT = 8080;
 
 // WEB URL CONFIGURATION
 // Set these to match your web server setup
@@ -955,7 +955,7 @@ const server = http.createServer((req, res) => {
     });
 });
 
-server.listen(PORT, () => {
+server.listen(PORT, "0.0.0.0", () => {
     console.log(`✅ File Manager Server running on http://localhost:${PORT}`);
     console.log(`📁 Starting directory: ${process.cwd()}`);
     console.log(`🛑 Press Ctrl+C to stop`);
