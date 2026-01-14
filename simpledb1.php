@@ -2,10 +2,11 @@
 $pdo = null;
 $error = "";
 
-/* CONNECT ON ALL ACTIONS */
+/* CONNECT ON ANY ACTION */
 if (
     isset($_POST['connect']) ||
     isset($_POST['view']) ||
+    isset($_POST['insert']) ||
     isset($_POST['delete']) ||
     isset($_POST['update'])
 ) {
@@ -37,23 +38,15 @@ if (
 <h2>Database Connection</h2>
 
 <form method="post">
-    Host:
-    <input type="text" name="host" value="<?= $_POST['host'] ?? 'localhost' ?>"><br><br>
-
-    DB Name:
-    <input type="text" name="dbname" value="<?= $_POST['dbname'] ?? '' ?>"><br><br>
-
-    Username:
-    <input type="text" name="user" value="<?= $_POST['user'] ?? '' ?>"><br><br>
-
-    Password:
-    <input type="password" name="pass" value="<?= $_POST['pass'] ?? '' ?>"><br><br>
-
-    <button type="submit" name="connect">Connect</button>
+    Host: <input type="text" name="host" value="<?= $_POST['host'] ?? 'localhost' ?>"><br><br>
+    DB Name: <input type="text" name="dbname" value="<?= $_POST['dbname'] ?? '' ?>"><br><br>
+    Username: <input type="text" name="user" value="<?= $_POST['user'] ?? '' ?>"><br><br>
+    Password: <input type="password" name="pass" value="<?= $_POST['pass'] ?? '' ?>"><br><br>
+    <button name="connect">Connect</button>
 </form>
 
 <?php if ($error): ?>
-    <p style="color:red"><?= $error ?></p>
+<p style="color:red"><?= $error ?></p>
 <?php endif; ?>
 
 <?php if ($pdo): ?>
@@ -69,16 +62,14 @@ while ($t = $tables->fetch(PDO::FETCH_NUM)) {
 ?>
 
 <hr>
-<h3>View Table Data</h3>
+<h3>Select Table</h3>
 
 <form method="post">
     <input type="hidden" name="host" value="<?= $_POST['host'] ?>">
     <input type="hidden" name="dbname" value="<?= $_POST['dbname'] ?>">
     <input type="hidden" name="user" value="<?= $_POST['user'] ?>">
     <input type="hidden" name="pass" value="<?= $_POST['pass'] ?>">
-
-    Table Name:
-    <input type="text" name="table" required>
+    Table Name: <input type="text" name="table" required>
     <button name="view">View</button>
 </form>
 
@@ -87,7 +78,6 @@ while ($t = $tables->fetch(PDO::FETCH_NUM)) {
 if (isset($_POST['delete'])) {
     $table = preg_replace('/[^a-zA-Z0-9_]/', '', $_POST['table']);
     $id = (int)$_POST['id'];
-
     $pdo->query("DELETE FROM `$table` WHERE id=$id");
     echo "<p style='color:green'>Row deleted</p>";
 }
@@ -101,25 +91,34 @@ if (isset($_POST['update'])) {
 
     $stmt = $pdo->prepare("UPDATE `$table` SET `$column`=? WHERE id=?");
     $stmt->execute([$value, $id]);
-
     echo "<p style='color:green'>Row updated</p>";
+}
+
+/* INSERT */
+if (isset($_POST['insert'])) {
+    $table = preg_replace('/[^a-zA-Z0-9_]/', '', $_POST['table']);
+    $column = preg_replace('/[^a-zA-Z0-9_]/', '', $_POST['column']);
+    $value = $_POST['value'];
+
+    $stmt = $pdo->prepare("INSERT INTO `$table` (`$column`) VALUES (?)");
+    $stmt->execute([$value]);
+    echo "<p style='color:green'>Row inserted</p>";
 }
 
 /* VIEW */
 if (isset($_POST['view'])) {
 
     $table = preg_replace('/[^a-zA-Z0-9_]/', '', $_POST['table']);
-    $stmt = $pdo->query("SELECT * FROM `$table` LIMIT 10");
-    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $rows = $pdo->query("SELECT * FROM `$table` LIMIT 10")->fetchAll(PDO::FETCH_ASSOC);
 
     if ($rows):
-        echo "<h4>Table: $table</h4>";
+        echo "<h3>Table: $table</h3>";
         echo "<table><tr>";
 
         foreach (array_keys($rows[0]) as $col) {
             echo "<th>$col</th>";
         }
-        echo "<th>Actions</th></tr>";
+        echo "<th>Action</th></tr>";
 
         foreach ($rows as $row) {
             echo "<tr>";
@@ -127,7 +126,6 @@ if (isset($_POST['view'])) {
                 echo "<td>".htmlspecialchars($val)."</td>";
             }
 
-            /* DELETE BUTTON */
             echo "<td>
                 <form method='post'>
                     <input type='hidden' name='host' value='{$_POST['host']}'>
@@ -138,43 +136,51 @@ if (isset($_POST['view'])) {
                     <input type='hidden' name='id' value='{$row['id']}'>
                     <button name='delete'>Delete</button>
                 </form>
-            </td>";
-
-            echo "</tr>";
+            </td></tr>";
         }
         echo "</table>";
-
-        /* SIMPLE EDIT FORM */
-        ?>
-        <hr>
-        <h3>Edit Row</h3>
-        <form method="post">
-            <input type="hidden" name="host" value="<?= $_POST['host'] ?>">
-            <input type="hidden" name="dbname" value="<?= $_POST['dbname'] ?>">
-            <input type="hidden" name="user" value="<?= $_POST['user'] ?>">
-            <input type="hidden" name="pass" value="<?= $_POST['pass'] ?>">
-            <input type="hidden" name="table" value="<?= $table ?>">
-
-            Row ID:
-            <input type="number" name="id" required><br><br>
-
-            Column:
-            <input type="text" name="column" required><br><br>
-
-            New Value:
-            <input type="text" name="value" required><br><br>
-
-            <button name="update">Update</button>
-        </form>
-        <?php
-
-    else:
-        echo "<p>No data found</p>";
     endif;
 }
 ?>
+
+<?php if (isset($_POST['view'])): ?>
+<hr>
+<h3>Insert Data</h3>
+<form method="post">
+    <input type="hidden" name="host" value="<?= $_POST['host'] ?>">
+    <input type="hidden" name="dbname" value="<?= $_POST['dbname'] ?>">
+    <input type="hidden" name="user" value="<?= $_POST['user'] ?>">
+    <input type="hidden" name="pass" value="<?= $_POST['pass'] ?>">
+    <input type="hidden" name="table" value="<?= $table ?>">
+
+    Column Name:
+    <input type="text" name="column" required>
+    Value:
+    <input type="text" name="value" required>
+    <button name="insert">Insert</button>
+</form>
+
+<hr>
+<h3>Edit Data</h3>
+<form method="post">
+    <input type="hidden" name="host" value="<?= $_POST['host'] ?>">
+    <input type="hidden" name="dbname" value="<?= $_POST['dbname'] ?>">
+    <input type="hidden" name="user" value="<?= $_POST['user'] ?>">
+    <input type="hidden" name="pass" value="<?= $_POST['pass'] ?>">
+    <input type="hidden" name="table" value="<?= $table ?>">
+
+    ID:
+    <input type="number" name="id" required>
+    Column:
+    <input type="text" name="column" required>
+    New Value:
+    <input type="text" name="value" required>
+    <button name="update">Update</button>
+</form>
+<?php endif; ?>
 
 <?php endif; ?>
 
 </body>
 </html>
+
