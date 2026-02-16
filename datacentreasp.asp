@@ -5,7 +5,7 @@
 ' Change connection string below as per target
 
 Dim ConnStr
-ConnStr = "Provider=SQLOLEDB;Data Source=127.0.0.1;Initial Catalog=master;User ID=sa;Password=yourpass;"  
+ConnStr = "Provider=SQLOLEDB;Data Source=127.0.0.1;Initial Catalog=HRSuiteHC;User ID=sa;Password=HRPass123;"  
 ' Examples:
 ' MSSQL local sa:   Provider=SQLOLEDB;Data Source=.;Initial Catalog=master;User ID=sa;Password=pass;
 ' Trusted:          Provider=SQLOLEDB;Data Source=.;Initial Catalog=master;Integrated Security=SSPI;
