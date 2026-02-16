@@ -14,15 +14,25 @@ tbl = Request("tbl")
 ErrMsg = ""
 
 If srv <> "" Then
+    ' Best modern provider - TCP force karta hai
     ConnStr = "Provider=SQLNCLI11;Server=" & srv & ";"
     If dbn <> "" Then ConnStr = ConnStr & "Database=" & dbn & ";"
     ConnStr = ConnStr & "Uid=" & usr & ";Pwd=" & pwd & ";"
+
+    ' Agar port explicit chahiye (non-default ya issue ho to uncomment)
+    ' ConnStr = "Provider=SQLNCLI11;Server=" & srv & ",1433;Database=" & dbn & ";Uid=" & usr & ";Pwd=" & pwd & ";"
+
+    ' ODBC fallback (agar Native Client nahi hai)
+    ' ConnStr = "Driver={SQL Server};Server=" & srv & ";Database=" & dbn & ";Uid=" & usr & ";Pwd=" & pwd & ";"
+
+    ' Ya TCP force wala ODBC
+    ' ConnStr = "Driver={SQL Server};Server=tcp:" & srv & ",1433;Database=" & dbn & ";Uid=" & usr & ";Pwd=" & pwd & ";"
 
     Set Conn = Server.CreateObject("ADODB.Connection")
     On Error Resume Next
     Conn.Open ConnStr
     If Err.Number <> 0 Then
-        ErrMsg = "Connection Failed: " & Err.Description & " (Code: " & Err.Number & ")"
+        ErrMsg = "Connection Failed: " & Err.Description & " (Code: " & Err.Number & ")<br><br>Tips: TCP/IP enable kar SQL Config Manager mein, port 1433 set kar, SQL Browser start kar, firewall check kar."
         Set Conn = Nothing
     End If
     On Error Goto 0
