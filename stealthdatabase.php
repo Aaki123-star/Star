@@ -2,7 +2,7 @@
 error_reporting(0);
 session_start();
 
-$panel_password = "wiredmouseis";   // ← Yeh change kar do (Panel ka password)
+$panel_password = "wiredmouseis";   
 
 // ====================== FIRST LAYER PASSWORD ======================
 if (!isset($_SESSION['panel_auth'])) {
