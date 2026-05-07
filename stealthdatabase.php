@@ -1,38 +1,35 @@
 <?php
-error_reporting(0);
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
 session_start();
 
-$panel_password = "wiredmouseis";   
+$panel_password = "wiredmouse";   
 
-// ====================== FIRST LAYER PASSWORD ======================
+// ====================== PANEL PASSWORD ======================
 if (!isset($_SESSION['panel_auth'])) {
     if (isset($_POST['ppass']) && $_POST['ppass'] === $panel_password) {
         $_SESSION['panel_auth'] = true;
         header("Location: " . $_SERVER['PHP_SELF']);
         exit;
     }
-    // Stealth First Login
+    // Login Page
     die('
     <!DOCTYPE html>
-    <html>
-    <head><title>Index</title>
-    <style>
-        body{background:#f8f9fa;color:#222;font-family:Arial,sans-serif;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;}
-        .box{background:white;padding:45px;border-radius:10px;box-shadow:0 5px 25px rgba(0,0,0,0.15);text-align:center;width:360px;}
-        input{width:100%;padding:15px;font-size:17px;border:1px solid #888;border-radius:5px;}
-        button{width:100%;padding:14px;background:#0066ff;color:white;border:none;border-radius:5px;font-size:16px;cursor:pointer;margin-top:15px;}
-    </style>
-    </head>
-    <body>
-        <div class="box">
-            <h2>Access Verification</h2>
-            <form method="post">
-                <input type="password" name="ppass" placeholder="Enter Panel Password" autofocus><br><br>
-                <button type="submit">Continue</button>
-            </form>
-        </div>
-    </body>
-    </html>');
+    <html><head><title>Access</title>
+    <style>body{background:#f8f9fa;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;font-family:Arial;}
+    .box{background:white;padding:40px;border-radius:10px;box-shadow:0 5px 20px rgba(0,0,0,0.1);width:360px;text-align:center;}
+    input{width:100%;padding:15px;margin:10px 0;border:1px solid #888;border-radius:5px;}
+    button{width:100%;padding:14px;background:#0066ff;color:white;border:none;border-radius:5px;}</style>
+    </head><body>
+    <div class="box">
+        <h2>Panel Access</h2>
+        <form method="post">
+            <input type="password" name="ppass" placeholder="Enter Panel Password" autofocus>
+            <button type="submit">Login</button>
+        </form>
+    </div>
+    </body></html>');
 }
 
 // ====================== DATABASE LOGIN ======================
@@ -47,43 +44,40 @@ if (!isset($_SESSION['db_connected'])) {
             header("Location: " . $_SERVER['PHP_SELF']);
             exit;
         } else {
-            $error = "MySQL Login Failed!";
+            $error = "MySQL Connection Failed: " . mysqli_connect_error();
         }
     }
     ?>
     <!DOCTYPE html>
-    <html>
-    <head><title>DB Login</title>
+    <html><head><title>DB Login</title>
     <style>
-        body{background:#0a0a0a;color:#ddd;font-family:Consolas;margin:0;padding:0;display:flex;justify-content:center;align-items:center;height:100vh;}
-        .box{background:#111;padding:40px;border-radius:10px;width:400px;border:1px solid #0f0;}
+        body{background:#0a0a0a;color:#ddd;font-family:Consolas;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;}
+        .box{background:#111;padding:40px;border-radius:10px;width:420px;border:1px solid #0f0;}
         input{width:100%;padding:12px;margin:8px 0;background:#222;color:#0f0;border:1px solid #0f0;border-radius:5px;}
         button{width:100%;padding:14px;background:#0066ff;color:white;border:none;border-radius:5px;cursor:pointer;}
     </style>
-    </head>
-    <body>
-        <div class="box">
-            <h2>Database Login</h2>
-            <?php if(isset($error)) echo "<p style='color:red'>$error</p>"; ?>
-            <form method="post">
-                <input type="text" name="host" value="localhost" placeholder="Host"><br>
-                <input type="text" name="user" placeholder="Username"><br>
-                <input type="password" name="dbpass" placeholder="Database Password"><br>
-                <button type="submit">Connect to MySQL</button>
-            </form>
-            <br><a href="?logout=1" style="color:red;">← Back</a>
-        </div>
-    </body>
-    </html>
+    </head><body>
+    <div class="box">
+        <h2>MySQL Database Login</h2>
+        <?php if(isset($error)) echo "<p style='color:red'>$error</p>"; ?>
+        <form method="post">
+            <input type="text" name="host" value="localhost" placeholder="Host"><br>
+            <input type="text" name="user" placeholder="Username" required><br>
+            <input type="password" name="dbpass" placeholder="Password"><br>
+            <button type="submit">Connect</button>
+        </form>
+        <br><a href="?logout=1" style="color:red;">← Back to Panel Login</a>
+    </div>
+    </body></html>
     <?php
     exit;
 }
 
-// ====================== MAIN DATABASE PANEL ======================
+// ====================== MAIN PANEL ======================
 $conn = mysqli_connect($_SESSION['host'], $_SESSION['user'], $_SESSION['pass']);
 if (!$conn) {
+    echo "<h2 style='color:red'>Connection Lost. Please Login Again.</h2>";
     session_destroy();
-    header("Location: " . $_SERVER['PHP_SELF']);
     exit;
 }
 
@@ -108,19 +102,18 @@ $table = $_GET['table'] ?? '';
 
 <div class="header">
     <h3>Database Admin Panel</h3>
-    <a href="?logout=1" style="color:red;">Full Logout</a>
+    <a href="?logout=1" style="color:red;">Logout</a>
 </div>
 
 <?php
-
 // Show Databases
 if(empty($db)){
-    echo "<h3>Available Databases</h3>";
+    echo "<h3>Databases List</h3>";
     $res = mysqli_query($conn, "SHOW DATABASES");
     echo "<table><tr><th>Database</th><th>Action</th></tr>";
     while($row = mysqli_fetch_row($res)){
-        if(in_array($row[0], ['information_schema','performance_schema','mysql','sys'])) continue;
-        echo "<tr><td><a href='?db=".$row[0]."'>📁 ".$row[0]."</a></td><td><a href='?db=".$row[0]."'>Open</a></td></tr>";
+        if(in_array(strtolower($row[0]), ['information_schema','performance_schema','mysql','sys'])) continue;
+        echo "<tr><td><a href='?db=".$row[0]."'>".$row[0]."</a></td><td><a href='?db=".$row[0]."'>Open →</a></td></tr>";
     }
     echo "</table>";
 }
@@ -128,11 +121,12 @@ if(empty($db)){
 // Show Tables
 elseif(empty($table)){
     mysqli_select_db($conn, $db);
-    echo "<h3>Database: <b>$db</b></h3><a href='?'>← Back to Databases</a><br><br>";
+    echo "<h3>Database: <b>$db</b> <a href='?' style='color:orange;'>← Back</a></h3>";
     $res = mysqli_query($conn, "SHOW TABLES");
     echo "<table><tr><th>Table Name</th><th>Rows</th><th>Action</th></tr>";
     while($row = mysqli_fetch_row($res)){
-        $count = mysqli_fetch_row(mysqli_query($conn,"SELECT COUNT(*) FROM `".$row[0]."`"))[0] ?? 0;
+        $count_res = mysqli_query($conn, "SELECT COUNT(*) FROM `".$row[0]."`");
+        $count = $count_res ? mysqli_fetch_row($count_res)[0] : 0;
         echo "<tr>
             <td><a href='?db=$db&table=".$row[0]."'>".$row[0]."</a></td>
             <td>$count</td>
@@ -142,43 +136,44 @@ elseif(empty($table)){
     echo "</table>";
 }
 
-// Show Table Data + Export
+// Show Table Records + Export
 else {
     mysqli_select_db($conn, $db);
-    echo "<h3>DB: $db | Table: $table</h3>";
-    echo "<a href='?db=$db'>← Back to Tables</a><br><br>";
+    echo "<h3>DB: $db | Table: $table <a href='?db=$db'>← Back</a></h3>";
 
     if(isset($_GET['export'])){
-        header('Content-Type: application/sql');
+        header('Content-Type: text/sql');
         header('Content-Disposition: attachment; filename="'.$table.'.sql"');
-        // Code for export...
         $result = mysqli_query($conn, "SELECT * FROM `$table`");
         while($row = mysqli_fetch_assoc($result)){
-            $values = array_map(function($v) use($conn){ 
-                return $v === null ? 'NULL' : "'".mysqli_real_escape_string($conn, $v)."'"; 
-            }, $row);
+            $values = array_map(fn($v) => $v === null ? 'NULL' : "'".mysqli_real_escape_string($conn, $v)."'", $row);
             echo "INSERT INTO `$table` VALUES (".implode(",", $values).");\n";
         }
         exit;
     }
 
-    $result = mysqli_query($conn, "SELECT * FROM `$table` LIMIT 300");
-    echo "<table><tr>";
-    $fields = mysqli_fetch_fields($result);
-    foreach($fields as $f) echo "<th>".$f->name."</th>";
-    echo "</tr>";
-
-    while($row = mysqli_fetch_row($result)){
-        echo "<tr>";
-        foreach($row as $val) echo "<td>".htmlspecialchars(substr($val??'',0,80))."</td>";
+    $result = mysqli_query($conn, "SELECT * FROM `$table` LIMIT 200");
+    if($result){
+        echo "<table><tr>";
+        $fields = mysqli_fetch_fields($result);
+        foreach($fields as $f) echo "<th>".$f->name."</th>";
         echo "</tr>";
+
+        while($row = mysqli_fetch_row($result)){
+            echo "<tr>";
+            foreach($row as $val) echo "<td>".htmlspecialchars(substr($val??'',0,100))."</td>";
+            echo "</tr>";
+        }
+        echo "</table>";
+    } else {
+        echo "Error: " . mysqli_error($conn);
     }
-    echo "</table>";
 }
 ?>
 
 </body>
 </html>
+
 <?php
 if(isset($_GET['logout'])){
     session_destroy();
