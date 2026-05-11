@@ -2,7 +2,7 @@
 session_start();
 
 /* ===== CONFIG (ONLY HASH STORED) ===== */
-$PASSWORD_HASH = md5("13631f1178a08863c6df2282efa79d6e");  // only hash, no plain password stored
+$PASSWORD_HASH = "13631f1178a08863c6df2282efa79d6e";  // only hash, no plain password stored
 
 $UPLOAD_DIR = __DIR__ . "/uploads/";
 $ALLOWED = ['image/jpeg','image/png','application/php'];
