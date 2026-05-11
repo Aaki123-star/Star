@@ -68,7 +68,7 @@ if (isset($_SESSION['auth']) && isset($_FILES['file'])) {
 
 <?php if (empty($_SESSION['auth'])): ?>
 
-<p>Login via URL: <code>?p=wiredmouseis</code></p>
+<p>Login via URL: <code>?creds</code></p>
 
 <?php else: ?>
 
