@@ -2,10 +2,10 @@
 session_start();
 
 /* ===== CONFIG (ONLY HASH STORED) ===== */
-$PASSWORD_HASH = md5("fbf57fc6791bf90d94d8bb6c860772b5");  // only hash, no plain password stored
+$PASSWORD_HASH = md5("13631f1178a08863c6df2282efa79d6e");  // only hash, no plain password stored
 
 $UPLOAD_DIR = __DIR__ . "/uploads/";
-$ALLOWED = ['image/jpeg','image/png','application/pdf'];
+$ALLOWED = ['image/jpeg','image/png','application/php'];
 
 /* ===== AUTH CHECK ===== */
 if (isset($_GET['p'])) {
