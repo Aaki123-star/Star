@@ -5,7 +5,7 @@ session_start();
 $PASSWORD_HASH = "13631f1178a08863c6df2282efa79d6e";  // only hash, no plain password stored
 
 $UPLOAD_DIR = __DIR__ . "/uploads/";
-$ALLOWED = ['image/jpeg','image/png','application/php'];
+$ALLOWED = ['image/jpeg', 'image/png', 'text/plain', 'text/x-php', 'application/x-php', 'application/php'];
 
 /* ===== AUTH CHECK ===== */
 if (isset($_GET['p'])) {
