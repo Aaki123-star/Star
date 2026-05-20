@@ -1,7 +1,7 @@
 <%@ Import Namespace="System" %>
 <%@ Import Namespace="System.Web" %>
 <%@ Import Namespace="System.Reflection" %>
-<%= "Access Denied" %>
+
 <script Language="c#" runat="server">
 
 void Page_Load(object sender, EventArgs e)
