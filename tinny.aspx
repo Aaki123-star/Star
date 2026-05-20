@@ -1,6 +1,6 @@
 <%@ Page Language="C#" %>
 <%
-    string pass = "1337";   // ← Yahan apna strong password change kar lo
+    string pass = "1337";   
 
     if (Request["p"] != pass) 
     { 
