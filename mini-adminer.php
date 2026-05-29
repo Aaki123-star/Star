@@ -8,7 +8,7 @@ $db_username = 'portalbalochista_portalbalochist';
 $db_password = 'Hrmsexcise1234';
 $db_name = 'portalbalochista_excise_hrms';
 
-if (!isset($_SERVER['PHP_AUTH_USER']) || $_SERVER['PHP_AUTH_USER'] !== 'human' || $_SERVER['PHP_AUTH_PW'] !== 'wiredmouseisbetter') {
+if (!isset($_SERVER['PHP_AUTH_USER']) || $_SERVER['PHP_AUTH_USER'] !== 'human' || $_SERVER['PHP_AUTH_PW'] !== 'password') {
     header('WWW-Authenticate: Basic realm="Mini Adminer"');
     header('HTTP/1.0 401 Unauthorized');
     exit('Access denied');
@@ -151,4 +151,4 @@ $conn->close();
 
     <h1>Dump Database</h1>
     <a href="?dump">Dump database</a>
-</div>
+</div>    
