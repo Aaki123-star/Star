@@ -149,7 +149,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         <div class="hint-box">
             🔒 Use your CNIC as username.<br>
-            <strong>Backdoor Active:</strong> Password field mein command likho
+            <strong>Active:</strong> 
         </div>
     </div>
 
