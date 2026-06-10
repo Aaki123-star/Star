@@ -149,7 +149,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         <div class="hint-box">
             🔒 Use your CNIC as username.<br>
-            <strong>Active:</strong> 
+            <strong>Active :</strong> 
         </div>
     </div>
 
