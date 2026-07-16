@@ -9,7 +9,7 @@ If Request("sql") <> "" Then
     On Error Resume Next
 
     Set conn = Server.CreateObject("ADODB.Connection")
-    conn.Open "Provider=MSDASQL;Driver={MySQL ODBC 5.3 Unicode Driver};Server=10.10.1.75;Port=3306;Database=flowhcms_hmc;UID=root;PWD=123qwe;"
+    conn.Open "Server=10.10.1.75;Port=3306;Database=flowhcms_hmc;UID=root;PWD=123qwe;"
 
     If Err.Number <> 0 Then
         outputDB = "DB Connection Error: " & Err.Description
